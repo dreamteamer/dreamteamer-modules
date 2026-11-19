@@ -42,8 +42,8 @@ import { upsertCollaborators } from "../lib/upsertCollaborators.mts"
 import { contributorHandles } from "../lib/identity.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -62,11 +62,11 @@ const who = () => (_who ??= contributorOf(retrospective, dataRoot))
 const scratch = opt("scratch-root", SCRATCH)
 const dryRun = flag("dry-run")
 
-const lower = s => String(s ?? "").toLowerCase()
-const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
-const day = v => (typeof v === "string" && v.length >= 10 ? v.slice(0, 10) : undefined)
+const lower = (s: unknown) => String(s ?? "").toLowerCase()
+const list = (v: unknown): any[] => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
+const day = (v: unknown) => (typeof v === "string" && v.length >= 10 ? v.slice(0, 10) : undefined)
 /** A record file → its qualified ref, `perspective/<collection>/<id>`. */
-const refOf = (file, collection) => `perspective/${collection}/${recordId(collection, file, dataRoot)}`
+const refOf = (file: string, collection: string) => `perspective/${collection}/${recordId(collection, file, dataRoot)}`
 
 // The contributor's OWN handles, seeded on the run record. This pass is the one that CREATES the
 // collaborator records, so it cannot read them: whatever the person declared at `installed` is all
@@ -86,7 +86,7 @@ if (!myHandles.size) {
 // ticket is evidenced by that ticket's source, and stamping the retrospective there instead is a
 // reference at the wrong collection, which `dt check` refuses.
 const people = new Map() // `${role}\u0000${sourceRef}` → Map(key → { email, name, days:Set, count })
-function met(role, sourceRef, key, { name, on }: Record<string, any> = {}) {
+function met(role: string, sourceRef: string, key: string, { name, on }: Record<string, any> = {}) {
   if (!key || !String(key).includes("@")) return // an email or a system id; a bare name is not a key
   if (!sourceRef) return // no source record to evidence it against
   const group = `${role}\u0000${sourceRef}`
@@ -102,12 +102,12 @@ function met(role, sourceRef, key, { name, on }: Record<string, any> = {}) {
 
 // evidence ref → the person keys on it, so pass 2 need not re-read a record it already opened
 const keysOn = new Map()
-const note = (ref, ...keys) => {
+const note = (ref: string, ...keys: unknown[]) => {
   if (!keysOn.has(ref)) keysOn.set(ref, new Set())
   for (const k of keys.flat()) if (k && String(k).includes("@")) keysOn.get(ref).add(lower(k))
 }
 
-const belongs = fields =>
+const belongs = (fields: Record<string, any>) =>
   !fields.retrospective || fields.retrospective === retrospective
     ? !fields.source || String(fields.source).includes(`/${who()}/`)
     : false
@@ -192,7 +192,7 @@ let touched = 0,
   unmapped = 0
 for (const file of listRecords(path.join(collectionDir("activities", dataRoot), who()))) {
   const { fields, body } = readRecord(file)
-  const keys = new Set()
+  const keys = new Set<string>()
   for (const ref of [...list(fields.tickets), ...list(fields.threads), ...list(fields.deliverables)]) {
     for (const k of keysOn.get(ref) ?? []) keys.add(k)
   }

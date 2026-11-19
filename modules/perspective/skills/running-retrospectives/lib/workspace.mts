@@ -40,7 +40,7 @@ export function readEnv(file = path.join(WORKSPACE_ROOT, ".env")): Record<string
 }
 
 /** Run the dreamteamer CLI in the workspace; returns stdout. Throws with stderr on failure. */
-export function dt(args, { input }: Record<string, any> = {}) {
+export function dt(args: string[], { input }: { input?: string } = {}): string {
   const bin = path.join(WORKSPACE_ROOT, "node_modules", ".bin", "dreamteamer")
   return execFileSync(bin, args, { cwd: WORKSPACE_ROOT, encoding: "utf8", input, stdio: ["pipe", "pipe", "pipe"] })
 }
@@ -48,11 +48,11 @@ export function dt(args, { input }: Record<string, any> = {}) {
 /** The three engine template variables → a real path on THIS machine. An unset var throws, never guesses.
  *  (No sample variable name appears here on purpose: an env template written in a comment reads as
  *  a real undeclared key to a workspace's env checks.) */
-export function render(template, env = readEnv()) {
+export function render(template: string, env: Record<string, string> = readEnv()): string {
   return template
     .replace(/\$\{userHome\}/g, os.homedir())
     .replace(/\$\{workspaceFolder\}/g, WORKSPACE_ROOT)
-    .replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, k) => {
+    .replace(/\$\{env:([A-Z0-9_]+)\}/g, (_, k: string) => {
       const v = process.env[k] ?? env[k]
       if (v === undefined || v === "") throw new Error(`\${env:${k}} is not set — records never travel resolved`)
       return v.replace(/^~(?=\/|$)/, os.homedir())
@@ -60,8 +60,8 @@ export function render(template, env = readEnv()) {
 }
 
 /** The inverse: a real path → the template a record may carry. Longest-prefix wins; unknown prefixes stay absolute (check-records will refuse them). */
-export function templatize(abs, env: any = readEnv()) {
-  const cands = []
+export function templatize(abs: string, env: Record<string, string> = readEnv()): string {
+  const cands: [string, string][] = []
   const repos = (process.env.REPOS_FOLDER ?? env.REPOS_FOLDER ?? "").replace(/^~(?=\/|$)/, os.homedir())
   if (repos) cands.push([repos, "${env:REPOS_FOLDER}"])
   cands.push([WORKSPACE_ROOT, "${workspaceFolder}"], [os.homedir(), "${userHome}"])
@@ -71,7 +71,7 @@ export function templatize(abs, env: any = readEnv()) {
 }
 
 /** ISO-8601 week label, e.g. 2026-W36. */
-export function isoWeek(d) {
+export function isoWeek(d: Date): string {
   const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
   const day = t.getUTCDay() || 7
   t.setUTCDate(t.getUTCDate() + 4 - day)
@@ -85,7 +85,7 @@ export function isoWeek(d) {
  *  deriving them everywhere a view is drawn is how three views end up with three Mondays. So the
  *  reader derives them ONCE, here, and writes them onto the record. ISO 8601: week 1 is the week
  *  containing the year's first Thursday, so it may start in December. */
-export function isoWeekRange(period) {
+export function isoWeekRange(period: string) {
   const m = /^(\d{4})-W(\d{2})$/.exec(String(period))
   if (!m) throw new Error(`not an ISO week: ${period}`)
   const [y, w] = [Number(m[1]), Number(m[2])]
@@ -96,11 +96,11 @@ export function isoWeekRange(period) {
   start.setUTCDate(mondayOfW1.getUTCDate() + (w - 1) * 7)
   const end = new Date(start)
   end.setUTCDate(start.getUTCDate() + 6)
-  const iso = d => d.toISOString().slice(0, 10)
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
   return { start: iso(start), end: iso(end) }
 }
 
-export function slug(s) {
+export function slug(s: unknown): string {
   return (
     String(s)
       .toLowerCase()

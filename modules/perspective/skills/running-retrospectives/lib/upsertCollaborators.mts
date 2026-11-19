@@ -10,9 +10,9 @@ import path from "node:path"
 import { listRecords, readRecord, writeRecord, recordPath, collectionDir } from "./records.mts"
 import { slug } from "./workspace.mts"
 
-const lower = s => String(s ?? "").toLowerCase()
-const earliest = (...ds) => ds.filter(Boolean).sort()[0]
-const latest = (...ds) => ds.filter(Boolean).sort().at(-1)
+const lower = (s: unknown) => String(s ?? "").toLowerCase()
+const earliest = (...ds: (string | null | undefined)[]) => ds.filter(Boolean).sort()[0]
+const latest = (...ds: (string | null | undefined)[]) => ds.filter(Boolean).sort().at(-1)
 
 /**
  * people: [{ email?, id?, name?, contact?, count, days: ['YYYY-MM-DD', …] }]
@@ -34,8 +34,18 @@ export function upsertCollaborators({
   author,
   context,
   dryRun = false,
+}: {
+  dataRoot: string
+  contributorSlug: string
+  retrospective: string
+  sourceRef?: string
+  people: Record<string, any>[]
+  role?: string
+  author?: string
+  context?: string
+  dryRun?: boolean
 }) {
-  const existing = listRecords(path.join(collectionDir("users", dataRoot), contributorSlug)).map(file => ({
+  const existing = listRecords(path.join(collectionDir("users", dataRoot), contributorSlug)).map((file: string) => ({
     file,
     ...readRecord(file),
   }))
@@ -44,7 +54,7 @@ export function upsertCollaborators({
   for (const p of people) {
     const keys = [p.email, p.id].filter(Boolean).map(lower)
     if (!keys.length) continue // a bare display name is not a person we can key
-    const hit = existing.find(r => (r.fields.handles ?? []).some(h => keys.includes(lower(h))))
+    const hit = existing.find(r => (r.fields.handles ?? []).some((h: unknown) => keys.includes(lower(h))))
     // A DISPLAY NAME IS A HANDLE ONLY WHEN IT COLLIDES WITH NOBODY. A mail counterpart's display
     // name can match the name-handle a git-derived record already carries (same person, different
     // key — a github noreply address on one side, an email on the other). Writing the name onto the
@@ -52,7 +62,8 @@ export function upsertCollaborators({
     // the one thing this file exists to refuse; leaving it off keeps both records honest and the
     // question ("same person?") visible in the body for a person to settle.
     const nameTaken =
-      p.name && existing.some(r => r !== hit && (r.fields.handles ?? []).some(h => lower(h) === lower(p.name)))
+      p.name &&
+      existing.some(r => r !== hit && (r.fields.handles ?? []).some((h: unknown) => lower(h) === lower(p.name)))
     const handles = [
       ...new Map([p.email, p.id, nameTaken ? null : p.name].filter(Boolean).map(h => [lower(h), String(h)])).values(),
     ]

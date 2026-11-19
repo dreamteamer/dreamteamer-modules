@@ -21,7 +21,7 @@ const ITEM_RE = /^([ \t]*)(\d+)\.[ \t]+(.*)$/
 const INTERRUPTS_RE = /^(?:#{1,6}\s|>|```|~~~|(?:[-*_][ \t]*){3,}$|[-*+][ \t]+)/
 
 /** Tabs count as four columns, so indentation compares the way it reads. */
-const indentOf = line => line.match(/^[ \t]*/)[0].replace(/\t/g, "    ").length
+const indentOf = (line: string) => line.match(/^[ \t]*/)[0].replace(/\t/g, "    ").length
 
 /**
  * Every top-level numbered list item in `markdown`, in document order.
@@ -41,10 +41,18 @@ const indentOf = line => line.match(/^[ \t]*/)[0].replace(/\t/g, "    ").length
  *   `line` is 1-based. `raw` is the block verbatim. `content` is everything after the marker,
  *   collapsed onto one line.
  */
-export function numberedListItems(markdown) {
+/** An item while it is being read: its indent, number, first line and the lines so far. */
+interface OpenItem {
+  indent: number
+  number: number
+  line: number
+  lines: string[]
+}
+
+export function numberedListItems(markdown: unknown) {
   const lines = String(markdown ?? "").split("\n")
-  const items = []
-  let open = null // { indent, number, line, lines }
+  const items: ReturnType<typeof finish>[] = []
+  let open: OpenItem | null = null // { indent, number, line, lines }
   let pending = [] // blank lines held back — part of the item only if indented content follows
 
   const close = () => {
@@ -86,7 +94,7 @@ export function numberedListItems(markdown) {
   return items
 }
 
-function finish(open) {
+function finish(open: OpenItem) {
   const raw = open.lines.join("\n").replace(/\s+$/, "")
   const marker = ITEM_RE.exec(open.lines[0])
   const rest = [marker[3], ...open.lines.slice(1)]

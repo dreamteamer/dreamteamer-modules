@@ -18,8 +18,8 @@ import { recordPath, writeRecord, contributorOf, writeSource } from "../lib/reco
 import { upsertCollaborators } from "../lib/upsertCollaborators.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -93,7 +93,7 @@ if (!fixture && !token) {
 
 /** One GET. The response body is truncated into the error on purpose and the request headers are
  *  never echoed: an Asana 401 body says "Not Authorized", never the token, and this keeps it that way. */
-async function get(pathname, params = {}) {
+async function get(pathname: string, params: Record<string, unknown> = {}): Promise<any> {
   const url = new URL(API + pathname)
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") url.searchParams.set(k, String(v))
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } })
@@ -102,8 +102,8 @@ async function get(pathname, params = {}) {
   return res.json()
 }
 /** Every page: Asana cursors with `next_page.offset`, which is null on the last one. */
-async function getAll(pathname, params) {
-  const out = []
+async function getAll(pathname: string, params: Record<string, unknown>): Promise<any[]> {
+  const out: any[] = []
   let offset = null
   do {
     const page: any = await get(pathname, { ...params, ...(offset ? { offset } : {}) })
@@ -112,10 +112,10 @@ async function getAll(pathname, params) {
   } while (offset)
   return out
 }
-const fixtureData = name => JSON.parse(fs.readFileSync(path.join(fixture, name), "utf8")).data ?? []
+const fixtureData = (name: string): any[] => JSON.parse(fs.readFileSync(path.join(fixture, name), "utf8")).data ?? []
 
-const day = s => (s ? String(s).slice(0, 10) : undefined)
-const lower = s => String(s ?? "").toLowerCase()
+const day = (s: unknown) => (s ? String(s).slice(0, 10) : undefined)
+const lower = (s: unknown) => String(s ?? "").toLowerCase()
 
 // ── workspace ────────────────────────────────────────────────────────────────────────────────────
 const workspaces = fixture
@@ -161,7 +161,8 @@ const fetched = fixture
 /** Filtered HERE as well as server-side: the fixture path has no server, and a widened query must
  *  never attribute somebody else's task to this contributor (a wrong merge is the worst error this
  *  module can make). */
-const isMe = a => !!a && (a.gid === me.gid || (a.email && me.email && lower(a.email) === lower(me.email)))
+const isMe = (a: Record<string, any> | null | undefined) =>
+  !!a && (a.gid === me.gid || (a.email && me.email && lower(a.email) === lower(me.email)))
 const mine = fetched.filter(t => isMe(t.assignee)).filter(t => !since || day(t.created_at) >= since)
 
 // ── the story trail ──────────────────────────────────────────────────────────────────────────────
@@ -192,7 +193,7 @@ if (wantStories) {
 }
 
 /** The ticket as a person would read it. Never a blank body: "no description" is a fact worth saying. */
-function ticketBody(t) {
+function ticketBody(t: Record<string, any>): string {
   const st = stories.get(t.gid) ?? { comments: [], events: [] }
   const out = []
   const notes = (t.notes ?? "").trim()
@@ -249,7 +250,7 @@ for (const t of mine) {
         completed_on: day(t.completed_at),
         due_on: day(t.due_on),
         status: t.completed ? "completed" : "open",
-        tags: (t.tags ?? []).map(x => lower(x.name)).filter(Boolean),
+        tags: (t.tags ?? []).map((x: { name?: string }) => lower(x.name)).filter(Boolean),
         url: t.permalink_url,
         parent_external_id: t.parent?.gid,
         last_activity_on: day(t.modified_at),
@@ -258,9 +259,11 @@ for (const t of mine) {
           ? (stories.get(t.gid)?.comments.length ?? 0) + (stories.get(t.gid)?.events.length ?? 0) || undefined
           : undefined,
         subtask_count: t.num_subtasks || undefined,
-        followers: (t.followers ?? []).map(f => f.email || f.name).filter(Boolean),
+        followers: (t.followers ?? []).map((f: { email?: string; name?: string }) => f.email || f.name).filter(Boolean),
         custom_fields: Object.fromEntries(
-          (t.custom_fields ?? []).filter(c => c.name && c.display_value).map(c => [c.name, c.display_value])
+          (t.custom_fields ?? [])
+            .filter((c: Record<string, any>) => c.name && c.display_value)
+            .map((c: Record<string, any>) => [c.name, c.display_value])
         ),
         author: AUTHOR,
         creation_context: `read from Asana workspace ${ws.name}`,
@@ -286,7 +289,7 @@ const roles = new Map([
   ["follower", new Map()],
   ["commenter", new Map()],
 ])
-function met(role, who, on) {
+function met(role: string, who: Record<string, any>, on: string | undefined) {
   if (!who) return
   const u = users.find(x => x.gid === who.gid) ?? {}
   const email = who.email || u.email

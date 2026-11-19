@@ -30,8 +30,8 @@ import { recordPath, writeRecord, readRecord, contributorOf, writeSource } from 
 
 const READER = "read-obsidian@1"
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -64,7 +64,7 @@ const sourceRef = `perspective/sources/${sourceId}`
 /** Every markdown note, skipping EVERY dot-directory — `.obsidian` first, but also `.git`, `.trash`
  *  and whatever else the folder has accumulated. This is the same rule Obsidian applies, so what the
  *  reader sees is what the person sees. */
-function notes(dir, out = []) {
+function notes(dir: string, out: string[] = []): string[] {
   let entries
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true })
@@ -82,7 +82,7 @@ function notes(dir, out = []) {
 
 /** Frontmatter tags and inline `#tags`, and the counts. Reads the file and keeps NO prose: the
  *  text goes out of scope with this function, and only numbers and tags come back. */
-function measure(file) {
+function measure(file: string) {
   let text = ""
   try {
     text = fs.readFileSync(file, "utf8")

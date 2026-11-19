@@ -25,8 +25,8 @@ import { computeCodexMetrics, sessionIdOf, CODEX_INSPECTOR_VERSION } from "../li
 import { JUDGED_KEYS } from "../lib/metrics.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -73,9 +73,9 @@ const windowFloor = (() => {
 
 /** Every rollout under the sessions tree. Codex nests them `YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`;
  *  the walk does not depend on that, so an archived or re-organised tree still reads. */
-function rollouts(root) {
-  const out = []
-  const walk = d => {
+function rollouts(root: string): string[] {
+  const out: string[] = []
+  const walk = (d: string) => {
     let entries
     try {
       entries = fs.readdirSync(d, { withFileTypes: true })
@@ -180,7 +180,7 @@ for (const group of rows) {
   const existing = present ? readRecord(target) : { fields: {}, body: "" }
   // A judged field written by a later pass survives a re-read at a new inspector version — the same
   // contract the Claude reader keeps, and the reason JUDGED_KEYS is imported rather than restated.
-  const judged = {}
+  const judged: Record<string, unknown> = {}
   for (const k of JUDGED_KEYS) if (existing.fields[k] !== undefined) judged[k] = existing.fields[k]
   const record = {
     ...fields,

@@ -23,8 +23,8 @@ import { recordPath, writeRecord, readRecord, listRecords, contributorOf, collec
 import { numberedListItems } from "../lib/numberedListItems.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -47,16 +47,16 @@ const AUTHOR = "scripts/init@1"
 const RUNTIME = path.join(workspaceRoot, ".dreamteamer")
 
 /** Every file under `dir` matching `test`, recursively. Absent is empty, never an error. */
-function walk(dir, test) {
+function walk(dir: string, test: (name: string) => boolean): string[] {
   if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e): string[] => {
     const p = path.join(dir, e.name)
     return e.isDirectory() ? walk(p, test) : test(e.name) ? [p] : []
   })
 }
 
 /** The source_refs already on disk under this run's id prefix — the idempotency key, read once. */
-function existingRefs(collection) {
+function existingRefs(collection: string) {
   const seen = new Set()
   for (const file of listRecords(path.join(collectionDir(collection, dataRoot), who()))) {
     const ref = readRecord(file).fields?.source_ref
@@ -67,14 +67,14 @@ function existingRefs(collection) {
 
 // ── concepts: the vocabulary the workspace already defines ────────────────────────────────────────
 const conceptCandidates = []
-for (const file of walk(path.join(RUNTIME, "collections"), n => n.endsWith(".collection.yaml"))) {
+for (const file of walk(path.join(RUNTIME, "collections"), (n: string) => n.endsWith(".collection.yaml"))) {
   const doc: any = yaml.load(fs.readFileSync(file, "utf8")) ?? {}
   const name = doc.name || path.basename(file, ".collection.yaml")
   // the module does not describe ITSELF as the person's DSL
   if (String(name) === "perspective" || String(name).startsWith("perspective/")) continue
   conceptCandidates.push({ name: String(name), definition: doc.description ?? "", source_ref: `collections/${name}` })
 }
-for (const file of walk(path.join(RUNTIME, "skills"), n => n === "SKILL.md")) {
+for (const file of walk(path.join(RUNTIME, "skills"), (n: string) => n === "SKILL.md")) {
   const id = path.basename(path.dirname(file))
   const { fields } = readRecord(file)
   conceptCandidates.push({
@@ -83,7 +83,7 @@ for (const file of walk(path.join(RUNTIME, "skills"), n => n === "SKILL.md")) {
     source_ref: `skills/${id}`,
   })
 }
-for (const file of walk(path.join(RUNTIME, "commands"), n => n.endsWith(".command.md"))) {
+for (const file of walk(path.join(RUNTIME, "commands"), (n: string) => n.endsWith(".command.md"))) {
   const id = path.relative(path.join(RUNTIME, "commands"), file).replace(/\.command\.md$/, "")
   const { fields } = readRecord(file)
   conceptCandidates.push({
@@ -196,17 +196,17 @@ for (const d of decisionCandidates) {
 }
 
 // ── the perspective skeleton: the operational model, inline at description level ──────────────────
-const commands = walk(path.join(RUNTIME, "commands"), n => n.endsWith(".command.md")).map(file => {
+const commands = walk(path.join(RUNTIME, "commands"), (n: string) => n.endsWith(".command.md")).map((file: string) => {
   const { fields } = readRecord(file)
   const name = String(fields.name ?? path.basename(file, ".command.md"))
   return fields.description ? { name, description: String(fields.description) } : { name }
 })
-const skills = walk(path.join(RUNTIME, "skills"), n => n === "SKILL.md").map(file => {
+const skills = walk(path.join(RUNTIME, "skills"), (n: string) => n === "SKILL.md").map(file => {
   const { fields } = readRecord(file)
   const name = String(fields.name ?? path.basename(path.dirname(file)))
   return fields.description ? { name, description: String(fields.description) } : { name }
 })
-const routines = listRecords(path.join(workspaceRoot, "data", "routines")).map(file => {
+const routines = listRecords(path.join(workspaceRoot, "data", "routines")).map((file: string) => {
   const { fields } = readRecord(file)
   const entry: Record<string, any> = { name: String(fields.name ?? path.basename(file).replace(/\.[^./]+\.md$/, "")) }
   const description = fields.notes ?? fields.description

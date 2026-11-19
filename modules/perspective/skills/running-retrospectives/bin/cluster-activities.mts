@@ -58,8 +58,8 @@ import { listRecords, readRecord, recordPath, contributorOf, collectionDir, reco
 import { contributorHandles as handlesOf, isContributor as isThem } from "../lib/identity.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -85,7 +85,7 @@ const gapDays = Number(opt("gap-days", "3"))
 // An unquoted YAML date parses to a Date OBJECT, not a string — `period_start: 2025-09-08` comes
 // back as a Date, and `date + 'T00:00:00Z'` then produces an unparseable string, NaN, and a window
 // that silently does not apply. Normalise to YYYY-MM-DD before anything touches it.
-const asDay = v => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? "").slice(0, 10))
+const asDay = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v ?? "").slice(0, 10))
 const since = asDay(
   opt("since") ||
     (() => {
@@ -106,22 +106,25 @@ if (!Number.isFinite(gapDays) || gapDays < 0) {
 const GAP_MS = gapDays * 86400000
 
 /** A record belongs to this run when its source is one of the run's sources — or when it has none. */
-const belongs = fields => !fields.source || String(fields.source).startsWith(`perspective/sources/${who()}/`)
+const belongs = (fields: Record<string, any>) =>
+  !fields.source || String(fields.source).startsWith(`perspective/sources/${who()}/`)
 
-const ts = v => {
+const ts = (v: string) => {
   const t = Date.parse(v)
   return Number.isFinite(t) ? t : NaN
 }
-const day = ms => new Date(ms).toISOString().slice(0, 10)
+const day = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
 // ── gather ────────────────────────────────────────────────────────────────────────────────────
 /** items: { kind, id, at, repo, ... } */
-const items = []
+/** One piece of evidence the clustering groups: a session, a commit, a ticket, a thread, a deliverable, a meeting. */
+type Item = Record<string, any>
+const items: Item[] = []
 /** The window gate. A ticket is kept if EITHER end of it lands in the window — an old ticket
  *  completed this year is this year's work, and a ticket opened this year is too. */
 const sinceMs = since ? Date.parse(since + "T00:00:00Z") : NaN
 let outOfWindow = 0
-const inWindow = (at, endsAt) => {
+const inWindow = (at: number, endsAt?: number) => {
   if (!Number.isFinite(sinceMs)) return true
   const keep = (Number.isFinite(at) && at >= sinceMs) || (Number.isFinite(endsAt) && endsAt >= sinceMs)
   if (!keep) outOfWindow++
@@ -170,7 +173,7 @@ for (const f of listRecords(collectionDir("tickets", dataRoot))) {
 // one of them; a run that declares none filters NOTHING, which is honest for a solo workspace rather
 // than an empty timeline. `lib/identity.mjs` holds the rule.
 const contributorHandles = handlesOf(retrospective, dataRoot)
-const isContributor = (email, name?) => isThem(contributorHandles, email, name)
+const isContributor = (email: unknown, name?: unknown) => isThem(contributorHandles, email, name)
 let foreignCommits = 0
 
 for (const f of listRecords(collectionDir("threads", dataRoot))) {
@@ -210,7 +213,7 @@ for (const f of listRecords(collectionDir("threads", dataRoot))) {
     at,
     endsAt: ts(fields.last_on),
     repo: top ? `mail:${top}` : "mail:(personal)",
-    participants: (fields.participants ?? []).map(p => String(p).toLowerCase()),
+    participants: (fields.participants ?? []).map((p: unknown) => String(p).toLowerCase()),
     words: [fields.subject],
   })
 }
@@ -294,15 +297,15 @@ if (fs.existsSync(meetingsFile)) {
       at,
       endsAt: Number.isFinite(endsAt) ? endsAt : at,
       repo: company ? `meeting:${company}` : "meeting:(unknown)",
-      participants: (m.handles ?? []).map(h => String(h).toLowerCase()),
+      participants: (m.handles ?? []).map((h: unknown) => String(h).toLowerCase()),
       words: [m.name],
     })
   }
 }
 
 // ── bucket, walk, cluster ─────────────────────────────────────────────────────────────────────
-const KIND_ORDER = { session: 0, commit: 1, ticket: 2, thread: 3, deliverable: 4, meeting: 5 }
-const buckets = new Map()
+const KIND_ORDER: Record<string, number> = { session: 0, commit: 1, ticket: 2, thread: 3, deliverable: 4, meeting: 5 }
+const buckets = new Map<string, Item[]>()
 for (const it of items) {
   const k = it.repo || "(unknown)"
   if (!buckets.has(k)) buckets.set(k, [])
@@ -321,18 +324,18 @@ files code`
     .trim()
     .split(/\s+/)
 )
-const tokens = arr =>
+const tokens = (arr: unknown[]) =>
   String(arr.filter(Boolean).join(" "))
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(w => w.length > 2 && !STOPWORDS.has(w))
 
-const candidates = []
+const candidates: { repo: string; items: Item[] }[] = []
 for (const key of [...buckets.keys()].sort()) {
   const list = buckets
     .get(key)
     .sort((a, b) => a.at - b.at || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-  let group = []
+  let group: Item[] = []
   const flush = () => {
     if (group.length) candidates.push({ repo: key, items: group })
     group = []
@@ -354,7 +357,7 @@ for (const key of [...buckets.keys()].sort()) {
 const MAX_ITEMS = Number(opt("max-items", "40"))
 const MAX_DAYS = Number(opt("max-days", "21"))
 const MAX_MS = MAX_DAYS * 86400000
-function splitOversized(group) {
+function splitOversized(group: Item[]): Item[][] {
   const span = group[group.length - 1].at - group[0].at
   if (group.length <= MAX_ITEMS && span <= MAX_MS) return [group]
   if (group.length < 4) return [group] // too small to seam, whatever its span
@@ -373,7 +376,7 @@ function splitOversized(group) {
   return [...splitOversized(group.slice(0, at)), ...splitOversized(group.slice(at))]
 }
 let oversized = 0
-const sized = []
+const sized: { repo: string; items: Item[] }[] = []
 for (const c of candidates) {
   const parts = splitOversized(c.items)
   if (parts.length > 1) oversized++

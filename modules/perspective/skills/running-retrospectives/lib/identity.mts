@@ -13,11 +13,11 @@ import path from "node:path"
 import { DATA } from "./workspace.mts"
 import { recordPath, readRecord, listRecords, contributorOf, collectionDir } from "./records.mts"
 
-const lower = s =>
+const lower = (s: unknown) =>
   String(s ?? "")
     .trim()
     .toLowerCase()
-const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
+const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
 
 /**
  * Every address, gid and name variant the retrospective's contributor appears under, lowercased.
@@ -27,7 +27,7 @@ const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v ===
  * is honest, while an empty one reads as a bug in the reader. Every call site depended on that
  * distinction already; making it the documented contract of one function is the point of the move.
  */
-export function contributorHandles(retrospectiveRef, dataRoot = DATA) {
+export function contributorHandles(retrospectiveRef: string, dataRoot = DATA): Set<string> | null {
   const base = String(retrospectiveRef).split("/").pop()
   let seeds
   try {
@@ -53,7 +53,7 @@ export function contributorHandles(retrospectiveRef, dataRoot = DATA) {
 }
 
 /** True when a row's author email or display name is one of the contributor's handles. */
-export function isContributor(handles, email, name) {
+export function isContributor(handles: Set<string> | null, email: unknown, name: unknown): boolean {
   if (!handles) return true // nothing declared → filter nothing, never filter everything
   return handles.has(lower(email)) || handles.has(lower(name))
 }

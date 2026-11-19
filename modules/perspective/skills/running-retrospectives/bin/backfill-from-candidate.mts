@@ -24,8 +24,8 @@ import { DATA, SCRATCH } from "../lib/workspace.mts"
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from "../lib/records.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -64,8 +64,8 @@ for (const line of fs.readFileSync(candFile, "utf8").split("\n")) {
   }
 }
 
-const day = v => String(v ?? "").slice(0, 10)
-const seg = r => String(r).split("/").pop().toLowerCase()
+const day = (v: unknown) => String(v ?? "").slice(0, 10)
+const seg = (r: unknown) => String(r).split("/").pop().toLowerCase()
 
 let set = 0,
   already = 0,

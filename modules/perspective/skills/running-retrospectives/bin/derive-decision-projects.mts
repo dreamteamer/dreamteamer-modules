@@ -25,8 +25,8 @@ import { DATA } from "../lib/workspace.mts"
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from "../lib/records.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -45,7 +45,7 @@ const who = () => (_who ??= contributorOf(retrospective, dataRoot))
 const dryRun = flag("dry-run")
 const force = flag("force")
 
-const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
+const list = (v: unknown): any[] => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
 
 // ── every artefact an activity cites → that activity's project ───────────────────────────────────
 const bySession = new Map()
@@ -69,7 +69,7 @@ for (const file of listRecords(path.join(collectionDir("activities", dataRoot), 
   }
 }
 
-function projectOf(fields) {
+function projectOf(fields: Record<string, any>) {
   // The session the decision was FORMED in is the strongest link there is: it is the piece of work
   // itself, not a place the decision was later written down.
   for (const c of list(fields.conversations)) {

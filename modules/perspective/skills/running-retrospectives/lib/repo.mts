@@ -11,7 +11,7 @@ import path from "node:path"
 
 const cache = new Map()
 
-function gitRootOf(dir) {
+function gitRootOf(dir: string): string | null {
   let d = dir
   for (let i = 0; i < 40; i++) {
     if (fs.existsSync(path.join(d, ".git"))) return d
@@ -22,7 +22,7 @@ function gitRootOf(dir) {
   return null
 }
 
-function remoteOf(gitRoot) {
+function remoteOf(gitRoot: string): string | null {
   // read .git/config directly — no subprocess per session, this runs 5,000 times
   try {
     const cfg = fs.readFileSync(path.join(gitRoot, ".git", "config"), "utf8")
@@ -34,7 +34,7 @@ function remoteOf(gitRoot) {
 }
 
 /** `git@github.com:owner/name.git` / `https://host/owner/name` → `owner/name`. */
-export function shortRemote(url) {
+export function shortRemote(url: string): string {
   if (!url) return ""
   const m = /[:/]([^/:]+)\/([^/]+?)(?:\.git)?$/.exec(url.trim())
   return m ? `${m[1]}/${m[2]}` : url
@@ -48,7 +48,7 @@ export function shortRemote(url) {
  *                     `subject_repos`, or the field fills with "Documents" and "scratchpad".
  * Result is memoized: a scan hits the same handful of cwds thousands of times.
  */
-export function resolveRepo(cwd) {
+export function resolveRepo(cwd: string) {
   if (!cwd) return { repo: "unknown", repo_remote: "", kind: "none" }
   if (cache.has(cwd)) return cache.get(cwd)
   let out
@@ -79,7 +79,7 @@ const BORING_SEG =
 /** Is this a path worth attributing a session to? */
 // `home` defaults to os.homedir() rather than the HOME variable: homedir() is the same answer
 // without an environment lookup a workspace would have to declare.
-export function interestingDir(dir, home = os.homedir()) {
+export function interestingDir(dir: string, home = os.homedir()): boolean {
   if (!dir || dir === "/" || dir === ".") return false
   if (BORING.test(dir) || BORING_SEG.test(dir)) return false
   if (home && (dir === home || dir === path.join(home, "Documents") || dir === path.join(home, "Downloads")))
@@ -88,6 +88,6 @@ export function interestingDir(dir, home = os.homedir()) {
 }
 
 /** The encoded `projects/<dir>` name back into a path guess, for transcripts with no cwd record. */
-export function decodeProjectDir(name) {
+export function decodeProjectDir(name: string): string {
   return name.replace(/^-/, "/").replace(/-/g, "/")
 }

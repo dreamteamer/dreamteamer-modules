@@ -44,7 +44,7 @@ const TOOL_ERROR = /^(Script failed|Error:|error:)|\bScript error:/m
 const ENVELOPE =
   /^\s*<(recommended_plugins|realtime_delegation|codex_delegation|environment_context|heartbeat|user_instructions|app-context)>/
 
-const textOf = content => {
+const textOf = (content: unknown): string => {
   if (typeof content === "string") return content
   if (!Array.isArray(content)) return ""
   return content.map(c => (typeof c === "string" ? c : (c?.text ?? ""))).join("\n")
@@ -60,7 +60,7 @@ const textOf = content => {
  * first's path and is skipped as already current — and the weekly counters would count sessions that
  * do not exist.
  */
-export async function sessionIdOf(file) {
+export async function sessionIdOf(file: string): Promise<string> {
   const rl = readline.createInterface({ input: fs.createReadStream(file), crlfDelay: Infinity })
   try {
     for await (const line of rl) {
@@ -87,13 +87,13 @@ export async function sessionIdOf(file) {
  * Returns null when no file in the group holds a `session_meta` — that is not a session, and
  * inventing an id for it would put a record in the collection nothing can ever join back to.
  */
-export async function computeCodexMetrics(files, { account = "codex" } = {}) {
+export async function computeCodexMetrics(files: string | string[], { account = "codex" } = {}) {
   const group = Array.isArray(files) ? files : [files]
   const s = {
-    firstTs: null,
-    lastTs: null,
+    firstTs: null as number | null,
+    lastTs: null as number | null,
     activeMs: 0,
-    prevTs: null,
+    prevTs: null as number | null,
     turnsUser: 0,
     turnsAssistant: 0,
     toolCalls: 0,
@@ -108,9 +108,9 @@ export async function computeCodexMetrics(files, { account = "codex" } = {}) {
     firstUserText: "",
     cwd: "",
     sessionId: "",
-    meta: null,
+    meta: null as Record<string, any> | null,
     metas: 0,
-    tok: null,
+    tok: null as Record<string, any> | null,
     models: new Set(),
     forked: false,
     subagents: new Set(),
@@ -291,7 +291,7 @@ export async function computeCodexMetrics(files, { account = "codex" } = {}) {
 }
 
 /** THE GATE — about VOLUME, never value, and the same three thresholds the Claude gate applies. */
-export function codexGate(m) {
+export function codexGate(m: Record<string, any>) {
   let reason = ""
   if (m.turns_user === 0) reason = "no operator turns"
   else if (m.turns_user <= 1 && m.turns_assistant <= 2 && m.tool_calls <= 3)

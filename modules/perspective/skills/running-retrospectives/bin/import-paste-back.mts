@@ -17,7 +17,7 @@ const ORIGINS = ["paste-back-chatgpt", "paste-back-gemini", "paste-back-other"]
 const AUTHOR = "scripts/import-paste-back@2"
 
 const argv = process.argv.slice(2)
-const opt = (n, d = "") => {
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }

@@ -13,15 +13,15 @@ import { DATA, isoWeekRange } from "../lib/workspace.mts"
 import { readRecord, writeRecord, collectionDir } from "../lib/records.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
 const dataRoot = opt("data-root", DATA)
 const root = collectionDir("activity-weeks", dataRoot)
 
-function* walk(dir) {
+function* walk(dir: string): Generator<string> {
   if (!fs.existsSync(dir)) return
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name)

@@ -35,8 +35,8 @@ import {
 } from "../lib/records.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -57,16 +57,16 @@ const force = flag("force")
 const AUTHOR = "scripts/infer-goals@1"
 
 /** This contributor's records in `perspective/<coll>`, each with its id. */
-const load = coll =>
+const load = (coll: string) =>
   listRecords(path.join(collectionDir(coll, dataRoot), who())).map(f => ({
     id: recordId(coll, f, dataRoot),
     file: f,
     ...readRecord(f),
   }))
-const day = v => (v ? String(v).slice(0, 10) : "")
-const uniq = a => [...new Set(a.filter(Boolean))].sort()
+const day = (v: unknown) => (v ? String(v).slice(0, 10) : "")
+const uniq = (a: unknown[]) => [...new Set(a.filter(Boolean))].sort()
 /** Dates and strings compare equal when they mean the same day; everything else structurally. */
-const norm = v => {
+const norm = (v: unknown): unknown => {
   if (v instanceof Date) return day(v.toISOString())
   if (Array.isArray(v)) return v.map(norm)
   if (v && typeof v === "object") {
@@ -74,14 +74,16 @@ const norm = v => {
     // was never there produce the same file, so treating them as different made the receipt claim
     // a write on every re-run while the bytes on disk never moved. A receipt that overstates its
     // own work is the same class of defect as a green test that proves nothing.
-    const keep = Object.keys(v).filter(
-      k => v[k] !== undefined && v[k] !== null && v[k] !== "" && !(Array.isArray(v[k]) && v[k].length === 0)
+    const o = v as Record<string, unknown>
+    const keep = Object.keys(o).filter(
+      k =>
+        o[k] !== undefined && o[k] !== null && o[k] !== "" && !(Array.isArray(o[k]) && (o[k] as unknown[]).length === 0)
     )
-    return Object.fromEntries(keep.sort().map(k => [k, norm(v[k])]))
+    return Object.fromEntries(keep.sort().map(k => [k, norm(o[k])]))
   }
   return v
 }
-const same = (a, b) => JSON.stringify(norm(a)) === JSON.stringify(norm(b))
+const same = (a: unknown, b: unknown) => JSON.stringify(norm(a)) === JSON.stringify(norm(b))
 
 const activities = load("activities")
 const decisions = load("decisions")
@@ -92,7 +94,11 @@ const projects = load("projects")
 // A project with one activity and no decision is not an arc — it predicts nothing, so it is skipped
 // and COUNTED, which is the honest measure of how much work no goal can be read out of.
 function candidates() {
-  const byProject = new Map()
+  type Loaded = ReturnType<typeof load>[number]
+  const byProject = new Map<
+    string,
+    { activities: Loaded[]; decisions: Loaded[]; topics: string[]; [key: string]: any }
+  >()
   for (const a of activities) {
     const key = a.fields.project ? String(a.fields.project).split("/").pop() : "(unassigned)"
     if (!byProject.has(key)) byProject.set(key, { activities: [], decisions: [], topics: [] })
@@ -104,8 +110,8 @@ function candidates() {
     const key = d.fields.project ? String(d.fields.project).split("/").pop() : "(unassigned)"
     if (byProject.has(key)) byProject.get(key).decisions.push(d)
   }
-  const out = [],
-    thin = []
+  const out: Record<string, any>[] = [],
+    thin: Record<string, any>[] = []
   for (const [key, g] of byProject) {
     const dates = [...g.activities.map(a => day(a.fields.started)), ...g.decisions.map(d => day(d.fields.decided_on))]
       .filter(Boolean)
@@ -129,7 +135,7 @@ function candidates() {
 }
 
 // ── attach ────────────────────────────────────────────────────────────────────────────────────
-function attach(rows) {
+function attach(rows: Record<string, any>[]) {
   const byKey = new Map(rows.map(r => [r.key, r]))
   let filled = 0,
     unchanged = 0,

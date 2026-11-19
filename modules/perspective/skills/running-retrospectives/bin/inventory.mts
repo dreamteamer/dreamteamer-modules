@@ -22,8 +22,8 @@ import { claudeHomes, walkJsonl } from "../lib/claudeTrees.mts"
 import { readDescriptor } from "../lib/descriptors.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -46,14 +46,14 @@ const reposRoot = opt(
   (process.env.REPOS_FOLDER ?? env.REPOS_FOLDER ?? "").replace(/^~(?=\/|$)/, os.homedir())
 )
 const AUTHOR = "scripts/inventory@1"
-const sources = []
-const add = (kind, label, reach, extra = {}) =>
+const sources: Record<string, any>[] = []
+const add = (kind: string, label: string, reach: string, extra: Record<string, unknown> = {}) =>
   sources.push({ retrospective: retrospectiveRef, contributor: who(), kind, label, reach, author: AUTHOR, ...extra })
 
 // git checkouts under the repos root, depth ≤ 3, plus this workspace
 const checkouts = []
 if (reposRoot && fs.existsSync(reposRoot)) {
-  const walk = (d, depth) => {
+  const walk = (d: string, depth: number) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (!e.isDirectory() || e.name.startsWith(".") || e.name === "node_modules") continue
       const p = path.join(d, e.name)
@@ -68,7 +68,7 @@ if (reposRoot && fs.existsSync(reposRoot)) {
   })
 if (fs.existsSync(path.join(WORKSPACE_ROOT, ".git"))) checkouts.push(WORKSPACE_ROOT)
 let registered = 0
-const known = flag("no-register") ? [] : JSON.parse(dt(["list", "repos", "--json"]))
+const known: Record<string, any>[] = flag("no-register") ? [] : JSON.parse(dt(["list", "repos", "--json"]))
 for (const p of checkouts) {
   const name = path.basename(p)
   let remote = ""
@@ -104,7 +104,7 @@ for (const p of checkouts) {
 }
 // coding-agent transcript trees. `--home` IS the userHome for this run (a test passes a tmp tree),
 // so a path under it templatizes to ${userHome} — templatize() only knows the REAL home.
-const homeTpl = abs =>
+const homeTpl = (abs: string) =>
   abs === home || abs.startsWith(home + path.sep) ? "${userHome}" + abs.slice(home.length) : templatize(abs)
 const homes = claudeHomes(home)
 for (const h of homes) {

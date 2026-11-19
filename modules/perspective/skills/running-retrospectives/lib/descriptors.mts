@@ -33,14 +33,14 @@ export const NAMESPACE = "perspective"
 
 /** The engine's rule for what one record of a collection is called: `activities` → `activity`,
  *  `sources` → `source`. Applied to the bare name, and the default of a record file's suffix. */
-export function singular(name) {
+export function singular(name: string): string {
   return name.endsWith("ies") ? name.slice(0, -3) + "y" : name.endsWith("s") ? name.slice(0, -1) : name
 }
 
 /** `perspective/activity-weeks` → `activity-weeks`; a name outside the namespace is already bare. */
-const bareName = name => (name.startsWith(`${NAMESPACE}/`) ? name.slice(NAMESPACE.length + 1) : name)
+const bareName = (name: string) => (name.startsWith(`${NAMESPACE}/`) ? name.slice(NAMESPACE.length + 1) : name)
 
-const load = file => {
+const load = (file: string) => {
   if (!fs.existsSync(file)) return null
   try {
     return yaml.load(fs.readFileSync(file, "utf8")) ?? null
@@ -50,7 +50,7 @@ const load = file => {
 }
 
 /** The values of an enum, whether authored as a list or as a map of value → decoration. */
-export function enumValues(e) {
+export function enumValues(e: unknown): string[] {
   if (Array.isArray(e)) return e
   if (e && typeof e === "object") return Object.keys(e)
   return null
@@ -75,11 +75,11 @@ function shippedMixins() {
 
 /** The authored descriptor this module ships for `name`, or null. Its mixins' fields are merged in
  *  ahead of the body field, as compile places them. */
-export function shippedDescriptor(name) {
+export function shippedDescriptor(name: string) {
   const doc: any = load(path.join(SHIPPED_COLLECTIONS, `${name}.collection.yaml`))
   if (!doc) return null
   const own = Object.entries<any>(doc.fields ?? {})
-  const added = (doc.mixins ?? []).flatMap(m => Object.entries(shippedMixins().get(m) ?? {}))
+  const added = (doc.mixins ?? []).flatMap((m: string) => Object.entries(shippedMixins().get(m) ?? {}))
   const bodyAt = own.findIndex(([, f]) => f?.body)
   const fields = Object.fromEntries(
     bodyAt < 0 ? [...own, ...added] : [...own.slice(0, bodyAt), ...added, ...own.slice(bodyAt)]
@@ -89,7 +89,7 @@ export function shippedDescriptor(name) {
 
 /** The descriptor `name` has in the workspace at `workspaceRoot`: the compiled copy, else the shipped
  *  one, else null. */
-export function readDescriptor(workspaceRoot, name) {
+export function readDescriptor(workspaceRoot: string, name: string) {
   const compiled: any = load(path.join(workspaceRoot, ".dreamteamer", "collections", `${name}.collection.yaml`))
   if (compiled?.compiled) {
     // compile records what it decided under `compiled`: the RESOLVED storage path in

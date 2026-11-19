@@ -14,7 +14,7 @@ const BUG_RE =
 const CR_RE =
   /^(feat|feature|refactor|perf|chore|docs|style|test|build|ci)\b|\b(add(ed|s|ing)?|implement(ed|s|ing)?|introduce[ds]?|support for|migrate[ds]?|rename[ds]?|remove[ds]?|upgrade[ds]?|redesign(ed)?)\b/i
 
-export function commitIntent(subject) {
+export function commitIntent(subject: unknown) {
   const s = String(subject ?? "")
   // Bug wins on a tie: "fix: add the missing guard" is a defect, and a commit that fixes while adding
   // is the expensive kind. The ORDER of these two tests is the classifier.

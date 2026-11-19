@@ -34,8 +34,8 @@ import {
 import { commitIntent } from "../lib/commitIntent.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -112,7 +112,7 @@ else
   }
 
 /** `a => b` and `pre/{a => b}/post` — numstat's rename spellings under -M. */
-function destPath(p) {
+function destPath(p: string): string {
   const brace = /^(.*)\{(.*) => (.*)\}(.*)$/.exec(p)
   if (brace) return (brace[1] + brace[3] + brace[4]).replace(/\/{2,}/g, "/")
   const arrow = /^(.*) => (.*)$/.exec(p)
@@ -121,7 +121,18 @@ function destPath(p) {
 
 /** Pair the raw block with the numstat block. Same order, one line each per file — index pairing;
  *  if git ever disagrees on the counts, fall back to matching on the destination path. */
-function zip(raws, nums, rich) {
+/** One file of a commit: `--raw` gives its status, `--numstat` its line counts. */
+interface RawFile {
+  path: string
+  status: string
+}
+interface NumFile {
+  path: string
+  add: number | null
+  del: number | null
+}
+
+function zip(raws: RawFile[], nums: NumFile[], rich: boolean) {
   // Without --raw and -M the path is numstat's, verbatim.
   if (!raws.length)
     return nums.map(n => ({ path: rich ? destPath(n.path) : n.path, status: "", add: n.add, del: n.del }))
@@ -134,11 +145,11 @@ function zip(raws, nums, rich) {
   })
 }
 
-function parseLog(text, rich) {
-  const out = []
-  let cur = null,
-    raws = [],
-    nums = []
+function parseLog(text: string, rich: boolean) {
+  const out: Record<string, any>[] = []
+  let cur: Record<string, any> | null = null,
+    raws: RawFile[] = [],
+    nums: NumFile[] = []
   const close = () => {
     if (cur) {
       cur.files = zip(raws, nums, rich)
@@ -180,7 +191,7 @@ function parseLog(text, rich) {
  *  does not exist yet cannot shrink. */
 let shrunk = 0,
   shrunkBy = 0
-function shrinkOf(wid, commits, dataRoot) {
+function shrinkOf(wid: string, commits: number, dataRoot: string) {
   try {
     const prior = Number(readRecord(recordPath("activity-weeks", wid, "activity-week", dataRoot)).fields.commits ?? 0)
     if (prior > commits) {
@@ -193,14 +204,14 @@ function shrinkOf(wid, commits, dataRoot) {
   return 0
 }
 
-function branchesOf(dec) {
+function branchesOf(dec: string | null | undefined): string[] {
   if (!dec) return []
   return dec
     .split(",")
-    .map(d => d.trim())
+    .map((d: string) => d.trim())
     .filter(Boolean)
-    .map(d => (d.startsWith("HEAD -> ") ? d.slice(8) : d))
-    .filter(d => d !== "HEAD" && !d.startsWith("tag: "))
+    .map((d: string) => (d.startsWith("HEAD -> ") ? d.slice(8) : d))
+    .filter((d: string) => d !== "HEAD" && !d.startsWith("tag: "))
 }
 
 let windows = 0,
@@ -323,7 +334,7 @@ for (const t of targets) {
         author_email: c.author_email,
         branches: branchesOf(c.decorations),
         subject: c.subject,
-        files: c.files.map(f => ({ path: f.path, status: f.status, add: f.add, del: f.del })),
+        files: c.files.map((f: Record<string, any>) => ({ path: f.path, status: f.status, add: f.add, del: f.del })),
         repo: t.repo || path.basename(t.dir),
         source: sourceRef,
       })
@@ -397,11 +408,11 @@ for (const t of targets) {
 // The rule is narrow and safe: identities declared in THIS home's own git config belong to whoever
 // owns the home. They are adopted ONLY when the given --contributor is one of them — so a shared
 // machine, or a contributor being read by proxy, adopts nothing.
-function ownGitIdentities(homeDir) {
+function ownGitIdentities(homeDir: string): { email?: string; name?: string }[] {
   const files = [path.join(homeDir, ".gitconfig"), path.join(homeDir, ".config", "git", "config")]
-  const seen = new Set(),
-    ids = []
-  const read = f => {
+  const seen = new Set<string>(),
+    ids: Record<string, string>[] = []
+  const read = (f: string) => {
     if (seen.has(f) || !fs.existsSync(f)) return
     seen.add(f)
     let text = ""
@@ -411,7 +422,7 @@ function ownGitIdentities(homeDir) {
       return
     }
     let section = "",
-      cur = null
+      cur: Record<string, string> | null = null
     for (const raw of text.split("\n")) {
       const l = raw.trim()
       if (!l || l.startsWith("#") || l.startsWith(";")) continue
@@ -443,7 +454,7 @@ function ownGitIdentities(homeDir) {
 // the worst error this module can make, and the merge is a person's decision. So: at most
 // ONE existing record is bound per author, email before display name, and overlapping `handles` are
 // left to be discovered rather than resolved here.
-const groups = []
+const groups: { handles: Set<string>; [key: string]: any }[] = []
 let newCollaborators = 0,
   gatedOut = 0,
   gatedDeleted = 0,
@@ -581,7 +592,7 @@ if (v2) {
     const live = new Set()
     for (const g of groups) for (const h of g.handles) live.add(h)
     for (const e of prior) {
-      if ((e.fields.handles ?? []).some(h => live.has(h))) continue
+      if ((e.fields.handles ?? []).some((h: string) => live.has(h))) continue
       if (!String(e.fields.author ?? "").startsWith("scripts/read-git")) continue
       if (String(e.fields.last_seen ?? "9999") >= since) continue
       gatedOut++

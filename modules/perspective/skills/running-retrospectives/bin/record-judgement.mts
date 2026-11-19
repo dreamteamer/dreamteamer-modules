@@ -18,12 +18,12 @@ const FIELDS = readDescriptor(WORKSPACE_ROOT, "perspective/conversations")?.fiel
 const NUMERIC = new Set(["integer", "number", "boolean", "object", "map"])
 
 /** Every way a judged value can be illegal, named precisely enough to fix without guessing. */
-function valueProblems(payload) {
+function valueProblems(payload: Record<string, unknown>): string[] {
   const bad = []
   for (const [key, value] of Object.entries(payload)) {
     const spec = FIELDS[key]
     if (!spec) continue
-    const clip = v => {
+    const clip = (v: unknown) => {
       const s = typeof v === "string" ? v : JSON.stringify(v)
       return s.length > 70 ? s.slice(0, 70) + "…" : s
     }
@@ -32,7 +32,7 @@ function valueProblems(payload) {
       continue
     }
     const values = enumValues(spec.enum)
-    if (values && !values.includes(value)) {
+    if (values && !values.includes(value as string)) {
       bad.push(
         `${key}: ${clip(value)} — must be exactly one of [${values.join(", ")}]${typeof value === "string" && value.length > 30 ? ". That looks like prose; prose belongs in `summary` or the body." : ""}`
       )
@@ -73,7 +73,7 @@ export const JUDGED = new Set([
   "quality_score",
 ])
 const argv = process.argv.slice(2)
-const opt = (n, d = "") => {
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }

@@ -16,15 +16,15 @@ import { computeMetrics, INSPECTOR_VERSION, JUDGED_KEYS } from "../lib/metrics.m
 // import and exits 2 without its arguments, so a consumer wanting the constant must take it from the
 // lib, which is where it now lives.
 export { JUDGED_KEYS }
-function pick(o, keys) {
-  const out = {}
+function pick(o: Record<string, any>, keys: string[]): Record<string, any> {
+  const out: Record<string, any> = {}
   for (const k of keys) if (o[k] !== undefined) out[k] = o[k]
   return out
 }
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -70,7 +70,7 @@ const transcripts = listTranscripts(homes)
 const rec = reconcile(homes, transcripts)
 
 /** A weekly record's only judged field. Recounting the week must not silently delete it. */
-function existingWeekSummary(id) {
+function existingWeekSummary(id: string) {
   try {
     return readRecord(recordPath("activity-weeks", id, "activity-week", dataRoot)).fields.summary || undefined
   } catch {

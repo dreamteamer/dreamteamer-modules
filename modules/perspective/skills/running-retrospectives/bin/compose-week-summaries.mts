@@ -39,8 +39,8 @@ import {
 import { contributorHandles } from "../lib/identity.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -61,15 +61,15 @@ const maxNames = Math.max(1, Number(opt("max-names", "3")) || 3)
 const dryRun = flag("dry-run")
 const force = flag("force")
 
-const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
+const list = (v: unknown): any[] => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
 // An unquoted YAML date parses to a Date, not a string. `period_start: 2025-09-08` in an
 // retrospective is written unquoted, so a string-only guard read it as absent and silently disabled
 // the whole out-of-period branch — 376 weeks kept being reported as quiet.
-const day = v =>
+const day = (v: unknown) =>
   v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === "string" && v.length >= 10 ? v.slice(0, 10) : ""
 /** `perspective/sources/<base>/git-repo--dreamteamer` → `git-repo--dreamteamer`. The suffix is the
  *  only part that identifies a source, and every reader builds it the same way. */
-const suffixOf = ref =>
+const suffixOf = (ref: string) =>
   String(ref ?? "")
     .split("/")
     .pop() ?? ""
@@ -154,7 +154,7 @@ activities.sort((a, b) => (a.started < b.started ? -1 : a.started > b.started ? 
 
 /** The sentence. Activity names ARE sentences (the naming pass writes them that way), so the summary
  *  quotes them rather than paraphrasing — joined, capped, and honest about what it left out. */
-function compose(names) {
+function compose(names: string[]): string {
   if (names.length <= maxNames) return names.join(" · ")
   return `${names.slice(0, maxNames).join(" · ")} · +${names.length - maxNames} more`
 }

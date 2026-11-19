@@ -77,8 +77,8 @@ import { contributorHandles as handlesOf } from "../lib/identity.mts"
 
 const READER = "read-meetings@1"
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -113,7 +113,7 @@ const sourceId = `${who()}/meetings--${slug(label)}`
 const sourceRef = `perspective/sources/${sourceId}`
 
 /** A `sources` record for a reach the run could not achieve is still a record — that is the point. */
-function unavailable(why) {
+function unavailable(why: string) {
   if (!dry) {
     writeSource(
       recordPath("sources", sourceId, "source", dataRoot),
@@ -149,11 +149,11 @@ if (!MEETINGS.compiled && !fs.existsSync(MEETINGS.dir)) {
   process.exit(0)
 }
 
-const lower = s =>
+const lower = (s: unknown) =>
   String(s ?? "")
     .trim()
     .toLowerCase()
-const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
+const list = (v: unknown): any[] => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
 
 // ── the contacts index, read once ────────────────────────────────────────────────────────────────
 // Every contact by ref, with the EMAILS the record carries. `email` is the shipped field; `emails`
@@ -220,7 +220,7 @@ if (!contactRef && !handles.size) {
 // ── walk ─────────────────────────────────────────────────────────────────────────────────────────
 /** The meeting's instant. `starts` when it has one; otherwise the date its id encodes, which every
  *  id does by construction (`{{ starts | date:YYYY/MM }}/{{ starts | date }}--…`). */
-function instantOf(fields, id) {
+function instantOf(fields: Record<string, any>, id: string) {
   const s = String(fields.starts ?? "").trim()
   if (s && Number.isFinite(Date.parse(s))) return s
   const m = /(\d{4}-\d{2}-\d{2})/.exec(id)
@@ -274,8 +274,8 @@ for (const { file, id } of recordFilesOf(MEETINGS)) {
   // its attendees to contacts is the normal state of a fresh workspace, and refusing the API's
   // addresses would drop every counterpart of every unresolved meeting. A row's `displayName` is never mined.
   const seen = new Set()
-  const counterparts = []
-  const take = c => {
+  const counterparts: Record<string, any>[] = []
+  const take = (c: Record<string, any>) => {
     if (c && c.ref !== contactRef && !seen.has(c.ref)) {
       seen.add(c.ref)
       counterparts.push(c)

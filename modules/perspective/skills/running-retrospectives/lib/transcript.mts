@@ -7,7 +7,7 @@ import fs from "node:fs"
 import readline from "node:readline"
 
 /** Feed each parsed JSONL line to `onLine`. Unparseable lines are counted, never thrown. */
-export async function eachLine(file, onLine) {
+export async function eachLine(file: string, onLine: (rec: any, n: number) => void) {
   const rl = readline.createInterface({ input: fs.createReadStream(file, { encoding: "utf8" }), crlfDelay: Infinity })
   let bad = 0
   let n = 0
@@ -27,7 +27,7 @@ export async function eachLine(file, onLine) {
 }
 
 /** message.content is a string OR a block array. Concatenate the text-bearing blocks. */
-export function textOf(content) {
+export function textOf(content: unknown): string {
   if (typeof content === "string") return content
   if (!Array.isArray(content)) return ""
   return content
@@ -43,7 +43,7 @@ export function textOf(content) {
  * Anything reasoning-shaped that a summary or analysis wants is therefore unavailable by default;
  * say so rather than concluding the agent did not think.
  */
-export function thinkingOf(content) {
+export function thinkingOf(content: unknown): string {
   if (!Array.isArray(content)) return ""
   return content
     .filter(b => b?.type === "thinking")
@@ -51,17 +51,17 @@ export function thinkingOf(content) {
     .join("\n")
 }
 
-export function countBlocks(content, type) {
+export function countBlocks(content: unknown, type: string): number {
   if (!Array.isArray(content)) return 0
   return content.reduce((n, b) => n + (b?.type === type ? 1 : 0), 0)
 }
 
-export function toolUsesOf(content) {
+export function toolUsesOf(content: unknown): Record<string, any>[] {
   if (!Array.isArray(content)) return []
   return content.filter(b => b?.type === "tool_use")
 }
 
-export function toolResultsOf(content) {
+export function toolResultsOf(content: unknown): Record<string, any>[] {
   if (!Array.isArray(content)) return []
   return content.filter(b => b?.type === "tool_result")
 }
@@ -84,7 +84,7 @@ const ENVELOPE = [
   /<ide_diagnostics>[\s\S]*?<\/ide_diagnostics>/g,
 ]
 
-export function stripEnvelope(text) {
+export function stripEnvelope(text: string): string {
   let t = text ?? ""
   for (const re of ENVELOPE) t = t.replace(re, "")
   return t.trim()
@@ -114,7 +114,7 @@ const COMPACT_REPLAY_RE = /^This session is being continued from a previous conv
  * verbatim — including any `[Request interrupted` or `<command-name>` in it — and would otherwise
  * be re-counted as a fresh turn every time the session compacts.
  */
-export function classifyUserLine(rec) {
+export function classifyUserLine(rec: Record<string, any>) {
   const content = rec.message?.content
   if (toolResultsOf(content).length) return { kind: "tool_result", text: "" }
   const raw = textOf(content)
@@ -134,12 +134,12 @@ export function classifyUserLine(rec) {
  * JSONL records carrying the SAME `message.id`. Counting lines overcounts turns by ~2-3×, so every
  * consumer must fold on message.id. This is the most consequential quirk of the format.
  */
-export function assistantMessageId(rec) {
+export function assistantMessageId(rec: Record<string, any>) {
   return rec.message?.id ?? rec.uuid
 }
 
 /** Paths a tool call touched — used for topic entropy and for guessing the subject repo. */
-export function pathsInToolInput(name, input) {
+export function pathsInToolInput(name: string, input: Record<string, any>): string[] {
   if (!input || typeof input !== "object") return []
   const out = []
   for (const k of ["file_path", "path", "notebook_path", "filePath"]) {

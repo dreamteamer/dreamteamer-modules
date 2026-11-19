@@ -13,7 +13,7 @@ export const nowIso = () => new Date().toISOString()
 // Every script reaches a `perspective/*` folder through these helpers and never joins a path by hand.
 // The descriptor is the authority, read through `lib/descriptors.mjs`: the workspace's compiled copy
 // first (an overlay may re-home a collection), then the one this package ships.
-const storageCache = new Map()
+const storageCache = new Map<string, { dir: string; suffix: string }>()
 
 /** The bare names of the collections this module ships, e.g. `decisions`, `activity-weeks`. */
 export function shippedCollections() {
@@ -27,7 +27,7 @@ export function shippedCollections() {
 }
 
 /** `{ dir, suffix }` for `perspective/<bare>` under `dataRoot`. Throws for a name no descriptor carries. */
-export function collectionStorage(bare, dataRoot = DATA) {
+export function collectionStorage(bare: string, dataRoot = DATA): { dir: string; suffix: string } {
   const key = `${dataRoot}\0${bare}`
   if (storageCache.has(key)) return storageCache.get(key)
   const workspaceRoot = path.dirname(dataRoot)
@@ -41,12 +41,12 @@ export function collectionStorage(bare, dataRoot = DATA) {
 }
 
 /** The folder `perspective/<bare>` keeps its records in. */
-export function collectionDir(bare, dataRoot = DATA) {
+export function collectionDir(bare: string, dataRoot = DATA): string {
   return collectionStorage(bare, dataRoot).dir
 }
 
 /** The file of record `<id>` in `perspective/<bare>`. `suffix` must match the descriptor's. */
-export function recordPath(bare, id, suffix, dataRoot = DATA) {
+export function recordPath(bare: string, id: string, suffix?: string, dataRoot = DATA): string {
   const storage = collectionStorage(bare, dataRoot)
   if (suffix !== undefined && suffix !== storage.suffix)
     throw new Error(`${NAMESPACE}/${bare} records carry .${storage.suffix}.md, not .${suffix}.md`)
@@ -54,14 +54,14 @@ export function recordPath(bare, id, suffix, dataRoot = DATA) {
 }
 
 /** The id of a record file in `perspective/<bare>` — its path inside the collection folder, suffix dropped. */
-export function recordId(bare, file, dataRoot = DATA) {
+export function recordId(bare: string, file: string, dataRoot = DATA): string {
   const storage = collectionStorage(bare, dataRoot)
   return path.relative(storage.dir, file).slice(0, -`.${storage.suffix}.md`.length)
 }
 
 /** Frontmatter keys are written in the order given; undefined/null/'' values are dropped. */
-export function writeRecord(file, fields, body = "") {
-  const clean = {}
+export function writeRecord(file: string, fields: Record<string, unknown>, body = "") {
+  const clean: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(fields)) {
     if (v === undefined || v === null || v === "") continue
     if (Array.isArray(v) && v.length === 0) continue
@@ -93,7 +93,7 @@ export function writeRecord(file, fields, body = "") {
  */
 const SCHEMA = yaml.CORE_SCHEMA
 
-export function readRecord(file): { fields: Record<string, any>; body: string } {
+export function readRecord(file: string): { fields: Record<string, any>; body: string } {
   const text = fs.readFileSync(file, "utf8")
   if (!text.startsWith("---\n")) return { fields: {}, body: text }
   const end = text.indexOf("\n---", 4)
@@ -103,9 +103,9 @@ export function readRecord(file): { fields: Record<string, any>; body: string } 
   return { fields, body }
 }
 
-export function listRecords(dir) {
+export function listRecords(dir: string): string[] {
   if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e): string[] => {
     const p = path.join(dir, e.name)
     return e.isDirectory() ? listRecords(p) : e.name.endsWith(".md") ? [p] : []
   })
@@ -123,7 +123,7 @@ export function listRecords(dir) {
  * This function is the ONE place it becomes a list, and it APPENDS rather than replacing: a writer
  * that overwrote the list would make every earlier run invisible.
  */
-export function writeSource(file, fields, body = "") {
+export function writeSource(file: string, fields: Record<string, any>, body = "") {
   // `last_seen_in` is destructured out and DROPPED: it is not a field on `sources` any more, and a
   // caller spreading a record read off disk would otherwise carry the retired key back into the
   // file, where `check` reports it as an unknown field on a record nobody edited.
@@ -152,7 +152,7 @@ export function writeSource(file, fields, body = "") {
  * Throws rather than guessing: a missing contributor would silently scatter records under
  * `undefined/`, and a scatter is far more expensive to undo than a refusal.
  */
-export function contributorOf(retrospectiveRef, dataRoot = DATA) {
+export function contributorOf(retrospectiveRef: string, dataRoot = DATA): string {
   const base = String(retrospectiveRef).split("/").pop()
   const file = recordPath("retrospective-sessions", base, "retrospective-session", dataRoot)
   let fields
@@ -180,11 +180,11 @@ export function contributorOf(retrospectiveRef, dataRoot = DATA) {
  * No-ops without a compiled runtime: under a fixture `--data-root` there is nothing to rebuild
  * against, and shelling `dt` there would reach the real workspace.
  */
-export function rebuildRelations(collections, dataRoot = DATA) {
+export function rebuildRelations(collections: string | string[], dataRoot = DATA) {
   const root = path.dirname(dataRoot)
-  if (!fs.existsSync(path.join(root, ".dreamteamer"))) return { skipped: true, collections: [] }
-  const done = []
-  for (const c of [].concat(collections)) {
+  if (!fs.existsSync(path.join(root, ".dreamteamer"))) return { skipped: true, collections: [] as string[] }
+  const done: string[] = []
+  for (const c of ([] as string[]).concat(collections)) {
     const r = spawnSync("npx", ["dreamteamer", "relations", "rebuild", c], { cwd: root, encoding: "utf8" })
     if (r.status === 0) done.push(c)
     else process.stderr.write(`  ⚠ could not rebuild ${c}: ${(r.stderr || r.stdout || "").trim().split("\n")[0]}\n`)
@@ -200,8 +200,21 @@ export function rebuildRelations(collections, dataRoot = DATA) {
 
 /** The compiled storage block of a collection, with the parent's folder resolved when it is stored
  *  under one — or the shipped defaults for a fixture with no compiled runtime beside it. */
-export function compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix) {
-  const read = name => {
+/** A collection's storage: its folder and suffix, and the parent folder when it is stored under one. */
+export interface CompiledStorage {
+  dir: string
+  suffix: string
+  under: { parentDir: string; path?: string; [key: string]: any } | null
+  [key: string]: unknown
+}
+
+export function compiledStorage(
+  workspaceRoot: string,
+  collection: string,
+  fallbackPath: string,
+  fallbackSuffix: string
+): CompiledStorage {
+  const read = (name: string) => {
     const d = readDescriptor(workspaceRoot, name)
     return d?.compiled ? d.storage : null
   }
@@ -221,7 +234,7 @@ export function compiledStorage(workspaceRoot, collection, fallbackPath, fallbac
 /** Every record file of a collection as `{ file, root, id }` — its own root, then each parent record's
  *  child folder. The id is the path inside WHICHEVER root the file sits in, which is what makes it
  *  independent of placement. */
-export function recordFilesOf(storage) {
+export function recordFilesOf(storage: CompiledStorage): { file: string; root: string; id: string }[] {
   const tail = `.${storage.suffix}.md`
   const roots = [storage.dir]
   if (storage.under && fs.existsSync(storage.under.parentDir)) {
@@ -244,7 +257,7 @@ export function recordFilesOf(storage) {
 
 /** The file one record id names, or null — a direct probe of the own root and of every parent's child
  *  folder, never a walk. */
-export function recordFileFor(storage, id) {
+export function recordFileFor(storage: CompiledStorage, id: string): string | null {
   const name = `${id}.${storage.suffix}.md`
   const own = path.join(storage.dir, name)
   if (fs.existsSync(own)) return own

@@ -3,9 +3,15 @@
 // ENV ACTION the engine performs (confined, fingerprinted, refused when git would commit .env, never
 // printed — cr-dt-007, D61): the unit names the key and its value and declares no apply.
 const KEY = "ASANA_PAT"
-const valueOf = (ctx, inputs: Record<string, any> = {}) => inputs.asana_pat ?? ctx.env?.[KEY]
+/** What the engine hands a setup unit. */
+interface SetupContext {
+  root?: string
+  env?: NodeJS.ProcessEnv
+}
 
-export function inspect(ctx) {
+const valueOf = (ctx: SetupContext, inputs: Record<string, any> = {}) => inputs.asana_pat ?? ctx.env?.[KEY]
+
+export function inspect(ctx: SetupContext) {
   const v = ctx.env?.[KEY]
   return {
     checks: [
@@ -27,7 +33,7 @@ export function inspect(ctx) {
   }
 }
 
-export function plan(ctx, inputs = {}) {
+export function plan(ctx: SetupContext, inputs: Record<string, any> = {}) {
   const v = valueOf(ctx, inputs)
   const over = { ...ctx, env: { ...ctx.env, ...(v ? { [KEY]: v } : {}) } }
   const action = {

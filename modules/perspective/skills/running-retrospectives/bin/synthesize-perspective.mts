@@ -56,8 +56,8 @@ import { contributorHandles as handlesOf } from "../lib/identity.mts"
 import { readDescriptor } from "../lib/descriptors.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -80,16 +80,17 @@ const who = () => (_who ??= contributorOf(retrospective, dataRoot))
 const workspaceRoot = path.resolve(opt("workspace-root", WORKSPACE_ROOT))
 const scratchRoot = path.resolve(opt("scratch-root", SCRATCH))
 
-const belongs = fields => !fields.source || String(fields.source).startsWith(`perspective/sources/${who()}/`)
+const belongs = (fields: Record<string, any>) =>
+  !fields.source || String(fields.source).startsWith(`perspective/sources/${who()}/`)
 /** Every record of a collection filed under this contributor — the ids all begin with <contributor>/. */
-function underRun(coll) {
+function underRun(coll: string) {
   return listRecords(path.join(collectionDir(coll, dataRoot), who())).map(f => ({
     file: f,
     id: recordId(coll, f, dataRoot),
     ...readRecord(f),
   }))
 }
-const refsUnderRun = coll =>
+const refsUnderRun = (coll: string) =>
   underRun(coll)
     .map(r => `perspective/${coll}/${r.id}`)
     .sort()
@@ -99,7 +100,8 @@ const conversations = listRecords(collectionDir("conversations", dataRoot))
   .map(f => readRecord(f).fields)
   .filter(belongs)
 
-const countIn = (field, name) => conversations.filter(c => Array.isArray(c[field]) && c[field].includes(name)).length
+const countIn = (field: string, name: string) =>
+  conversations.filter(c => Array.isArray(c[field]) && c[field].includes(name)).length
 
 // ── the record: read what is there, or make the minimum ───────────────────────────────────────
 const file = recordPath("perspectives", who(), "perspective", dataRoot)
@@ -157,7 +159,7 @@ fields.dsl = underRun("concepts")
 
 // ── inline projects ───────────────────────────────────────────────────────────────────────────
 /** The first sentence of a record body — headings are a title, never a sentence. '' when there is none. */
-function firstSentence(body) {
+function firstSentence(body: unknown): string {
   const prose = String(body ?? "")
     .split("\n")
     .filter(l => !/^\s*#/.test(l))
@@ -199,12 +201,12 @@ else delete fields.projects
 // never an author email. The handles are on the run record; `lib/identity.mjs` unions in the merge read-git already did.
 const contributorHandles = handlesOf(retrospective, dataRoot) ?? new Set()
 
-const urlish = v => typeof v === "string" && /^(?:https?:\/\/|ssh:\/\/|git@)\S+$/.test(v.trim())
+const urlish = (v: unknown) => typeof v === "string" && /^(?:https?:\/\/|ssh:\/\/|git@)\S+$/.test(v.trim())
 
 /** read-git writes `<scratchRoot>/commits/<base>/<slug(basename(repo dir))>.jsonl`, and the inventory
  *  builds the source id from `slug(label)` of that same folder name — so the id's `git-repo--<slug>`
  *  suffix IS the file's stem. The location's basename is tried too, for a hand-edited label. */
-function commitsFile(rec) {
+function commitsFile(rec: Record<string, any>) {
   const dir = path.join(scratchRoot, "commits", base)
   const stems = [
     rec.id
@@ -269,19 +271,21 @@ const repoCommits = repos.reduce((n, r) => n + r.commits, 0)
 
 // ── inline collections ────────────────────────────────────────────────────────────────────────
 /** Every file under `dir` matching `test`, recursively. Absent is empty, never an error. */
-function walk(dir, test) {
+function walk(dir: string, test: (name: string) => boolean): string[] {
   if (!fs.existsSync(dir)) return []
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e): string[] => {
     const p = path.join(dir, e.name)
     return e.isDirectory() ? walk(p, test) : test(e.name) ? [p] : []
   })
 }
 /** Record files are `<id>.<suffix>.<ext>`, so the suffix is what separates a record from a stray file. */
-const countRecords = (dir, suffix) =>
-  walk(dir, n => !n.startsWith(".") && (!suffix || n.includes(`.${suffix}.`))).length
+const countRecords = (dir: string, suffix?: string) =>
+  walk(dir, (n: string) => !n.startsWith(".") && (!suffix || n.includes(`.${suffix}.`))).length
 
-const collections = walk(path.join(workspaceRoot, ".dreamteamer", "collections"), n => n.endsWith(".collection.yaml"))
-  .map(file => ({ file, doc: yaml.load(fs.readFileSync(file, "utf8")) ?? {} }))
+const collections = walk(path.join(workspaceRoot, ".dreamteamer", "collections"), (n: string) =>
+  n.endsWith(".collection.yaml")
+)
+  .map(file => ({ file, doc: (yaml.load(fs.readFileSync(file, "utf8")) ?? {}) as Record<string, any> }))
   .map(({ file, doc }) => {
     const name = String(doc.name || path.basename(file, ".collection.yaml"))
     return { name, doc, d: readDescriptor(workspaceRoot, name) }
@@ -329,7 +333,7 @@ if (!flag("dry-run")) {
   // to write the perspective; the edge belongs to the schema.
 }
 
-const used = list => list.filter(e => Number(e.uses) > 0).length
+const used = (list: { uses?: unknown }[]) => list.filter(e => Number(e.uses) > 0).length
 process.stdout.write(
   `✔ perspective ${base} · commands ${commands.length} (used ${used(commands)})` +
     ` · skills ${skills.length} (used ${used(skills)})` +

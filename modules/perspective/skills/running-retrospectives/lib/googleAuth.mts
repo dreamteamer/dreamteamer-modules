@@ -36,7 +36,7 @@ export function googleAccounts(dir = CRED_DIR) {
  * Returns null when there is no credential for that account — the caller decides what that means.
  * Never logs, returns or embeds `client_secret` or `refresh_token`.
  */
-export async function accessTokenFor(email, dir = CRED_DIR) {
+export async function accessTokenFor(email: string, dir = CRED_DIR): Promise<string | null> {
   const file = path.join(dir, `${email}.json`)
   if (!fs.existsSync(file)) return null
   let cred
@@ -63,7 +63,7 @@ export async function accessTokenFor(email, dir = CRED_DIR) {
     }),
   })
   if (!res.ok) return null // a revoked grant is unavailable, not a crash
-  const json: any = await res.json().catch(() => null)
+  const json = (await res.json().catch((): null => null)) as { access_token?: string } | null
   return json?.access_token ?? null
 }
 
@@ -71,7 +71,13 @@ export async function accessTokenFor(email, dir = CRED_DIR) {
  *  takes `metadataHeaders` repeated, and a `set` would keep only the last. A 429 or 5xx is retried
  *  three times with a growing pause, because a per-thread read of a year's mail WILL hit the
  *  per-user rate limit, and a reader that dies near the end has wasted everything before it. */
-export async function gapi(token, base, endpoint, params = {}, { retries = 3 } = {}) {
+export async function gapi(
+  token: string,
+  base: string,
+  endpoint: string,
+  params: Record<string, unknown> = {},
+  { retries = 3 } = {}
+): Promise<any> {
   const url = new URL(`${base}/${endpoint}`)
   for (const [k, v] of Object.entries(params)) {
     if (v === undefined || v === null) continue
@@ -89,8 +95,8 @@ export async function gapi(token, base, endpoint, params = {}, { retries = 3 } =
 }
 
 /** One authenticated Drive API call. Throws on a non-2xx so the caller can report the status. */
-export const drive = (token, endpoint, params = {}) =>
+export const drive = (token: string, endpoint: string, params: Record<string, unknown> = {}) =>
   gapi(token, "https://www.googleapis.com/drive/v3", endpoint, params)
 /** One authenticated Gmail API call against the signed-in user's own mailbox. */
-export const gmail = (token, endpoint, params = {}) =>
+export const gmail = (token: string, endpoint: string, params: Record<string, unknown> = {}) =>
   gapi(token, "https://gmail.googleapis.com/gmail/v1/users/me", endpoint, params)

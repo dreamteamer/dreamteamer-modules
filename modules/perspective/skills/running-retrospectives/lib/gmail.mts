@@ -9,7 +9,7 @@
 // carrying it into a workspace another session will clone.
 
 /** `"Ada Lovelace" <ada@example.com>` → { email: 'ada@example.com', name: 'Ada Lovelace' }. */
-export function parseAddress(raw) {
+export function parseAddress(raw: unknown) {
   const s = String(raw ?? "").trim()
   if (!s) return null
   const m = /^(?:"?([^"<]*?)"?\s*)?<([^>]+)>$/.exec(s)
@@ -20,14 +20,14 @@ export function parseAddress(raw) {
 }
 
 /** Every address in a To/Cc header, in order, invalid ones dropped. */
-export function parseAddressList(raw) {
+export function parseAddressList(raw: unknown) {
   // Split on commas that are not inside quotes — a display name may carry one ("Lovelace, Ada").
   const parts = String(raw ?? "").match(/(?:"[^"]*"|[^,])+/g) ?? []
   return parts.map(parseAddress).filter(Boolean)
 }
 
 /** `Re: Fwd: RE: Budget` → `Budget`. The subject as the thread is about, not as the last reply spelled it. */
-export function bareSubject(raw) {
+export function bareSubject(raw: unknown): string {
   let s = String(raw ?? "").trim()
   for (;;) {
     const next = s.replace(/^\s*(re|fwd?|fw|aw|wg|tr|sv|vs|השב|הועבר)\s*:\s*/i, "")
@@ -37,18 +37,20 @@ export function bareSubject(raw) {
   return s || "(no subject)"
 }
 
-const header = (msg, name) =>
-  (msg.payload?.headers ?? []).find(h => h.name?.toLowerCase() === name.toLowerCase())?.value ?? ""
-const day = ms => new Date(Number(ms)).toISOString().slice(0, 10)
+const header = (msg: Record<string, any>, name: string) =>
+  (msg.payload?.headers ?? []).find(
+    (h: { name?: string; value?: string }) => h.name?.toLowerCase() === name.toLowerCase()
+  )?.value ?? ""
+const day = (ms: unknown) => new Date(Number(ms)).toISOString().slice(0, 10)
 
 /**
  * One thread → the fields of a `threads` record plus the per-message facts the reader rolls into
  * weeks and collaborators. `contributorHandles` is every address the contributor is known by, lowercased.
  * Returns null when the contributor wrote nothing in it — a thread they only received is not their work.
  */
-export function summarizeThread(thread, contributorHandles) {
+export function summarizeThread(thread: Record<string, any>, contributorHandles: Iterable<string>) {
   const mine = new Set([...contributorHandles].map(h => String(h).toLowerCase()))
-  const msgs = (thread.messages ?? []).filter(m => m.internalDate)
+  const msgs = (thread.messages ?? []).filter((m: Record<string, any>) => m.internalDate)
   if (!msgs.length) return null
   const people = new Map() // email → { email, name, sent }
   const sent = [] // days the contributor sent on

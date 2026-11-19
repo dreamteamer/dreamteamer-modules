@@ -26,8 +26,8 @@ import { accessTokenFor, googleAccounts, drive } from "../lib/googleAuth.mts"
 
 const READER = "read-drive@1"
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -67,7 +67,7 @@ const onlyKinds = opt("kinds")
   : null
 
 /** A `sources` record for a reach the run could not achieve is still a record — that is the point. */
-function unavailable(label, why) {
+function unavailable(label: string, why: string) {
   if (!flag("dry-run")) {
     writeSource(
       recordPath("sources", `${who()}/drive--${label}`, "source", dataRoot),
@@ -108,8 +108,8 @@ if (onlyDrive) drives.push({ id: onlyDrive, name: onlyDrive })
 else {
   // Named only so the receipt and the source body can say what was in reach; the scan itself is
   // one `allDrives` pass, because per-drive paging cannot see My Drive or shared-with-me at all.
-  const list: any = await drive(token, "drives", { pageSize: 100, fields: "drives(id,name)" }).catch(() => ({
-    drives: [],
+  const list = await drive(token, "drives", { pageSize: 100, fields: "drives(id,name)" }).catch(() => ({
+    drives: [] as { id: string; name: string }[],
   }))
   for (const d of list.drives ?? []) drives.push({ id: d.id, name: d.name })
   drives.push({ id: null, name: `My Drive + shared with ${as}` })
@@ -159,7 +159,7 @@ do {
   if (limit && mine.length >= limit) break
 } while (pageToken)
 
-const KIND = mime => {
+const KIND = (mime: string) => {
   if (mime === "application/vnd.google-apps.folder") return "folder"
   if (mime === "application/vnd.google-apps.document") return "doc"
   if (mime === "application/vnd.google-apps.spreadsheet") return "sheet"
@@ -170,7 +170,7 @@ const KIND = mime => {
   if (mime === "application/pdf") return "pdf"
   return "other"
 }
-const slug = s =>
+const slug = (s: unknown) =>
   String(s)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")

@@ -20,16 +20,16 @@ const [vault, base, out] = process.argv.slice(2)
 const dataRoot = path.join(vault, "data")
 const convDir = collectionDir("conversations", dataRoot)
 const ticketDir = collectionDir("tickets", dataRoot)
-const read = f => fs.readFileSync(f, "utf8")
-const fm = f => {
+const read = (f: string) => fs.readFileSync(f, "utf8")
+const fm = (f: string) => {
   const t = read(f)
   const m = /^---\n([\s\S]*?)\n---/.exec(t)
   return m ? m[1] : ""
 }
-const field = (t, k) => (new RegExp(`^${k}: (.*)$`, "m").exec(t)?.[1] ?? "").replace(/^["']|["']$/g, "")
+const field = (t: string, k: string) => (new RegExp(`^${k}: (.*)$`, "m").exec(t)?.[1] ?? "").replace(/^["']|["']$/g, "")
 
 const convTitle = new Map()
-const walk = d => {
+const walk = (d: string) => {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const p = path.join(d, e.name)
     if (e.isDirectory()) walk(p)
@@ -53,7 +53,7 @@ if (fs.existsSync(convDir)) walk(convDir)
 // nature and the first lines of it are the ones that say what the task actually was.
 const ticketTitle = new Map()
 if (fs.existsSync(ticketDir)) {
-  const tw = d => {
+  const tw = (d: string) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name)
       if (e.isDirectory()) tw(p)
@@ -98,19 +98,25 @@ for (const l of read(path.join(vault, ".perspective", "activity-candidates", `${
   if (!l.trim()) continue
   const c = JSON.parse(l)
   i++
-  const titles = (c.sessions ?? []).map(s => convTitle.get(s)).filter(Boolean)
-  const tot = titles.reduce((a, t) => ({ turns: a.turns + t.turns, min: a.min + t.min }), { turns: 0, min: 0 })
+  const titles = (c.sessions ?? []).map((s: string) => convTitle.get(s)).filter(Boolean)
+  const tot = titles.reduce(
+    (a: { turns: number; min: number }, t: { turns: number; min: number }) => ({
+      turns: a.turns + t.turns,
+      min: a.min + t.min,
+    }),
+    { turns: 0, min: 0 }
+  )
   const blk = [
     `### candidate ${i} · key=${c.key} · repo=${c.repo} · ${c.started}→${c.ended} · sessions=${c.sessions.length} commits=${c.commit_count} tickets=${(c.tickets ?? []).length} · turns=${tot.turns} active_min=${Math.round(tot.min)}${c.singleton ? " · SINGLETON" : ""}`,
   ]
   if (c.label_seed?.length) blk.push(`seed: ${c.label_seed.join(" ")}`)
   if (c.branches?.length) blk.push(`branches: ${c.branches.slice(0, 6).join(" ")}`)
   if (c.handles?.length) blk.push(`handles: ${c.handles.slice(0, 8).join(" ")}`)
-  const st = [...new Set(titles.map(t => t.title))].slice(0, 10)
+  const st = [...new Set(titles.map((t: { title: string }) => t.title))].slice(0, 10)
   if (st.length) blk.push("session titles:\n" + st.map(t => `  - ${t}`).join("\n"))
-  const cs = [...new Set((c.commits ?? []).map(s => subj.get(s)).filter(Boolean))].slice(0, 12)
+  const cs = [...new Set((c.commits ?? []).map((s: string) => subj.get(s)).filter(Boolean))].slice(0, 12)
   if (cs.length) blk.push("commit subjects:\n" + cs.map((t: any) => `  - ${t.slice(0, 150)}`).join("\n"))
-  const tt = [...new Set((c.tickets ?? []).map(t => ticketTitle.get(t)).filter(Boolean))].slice(0, 12)
+  const tt = [...new Set((c.tickets ?? []).map((t: string) => ticketTitle.get(t)).filter(Boolean))].slice(0, 12)
   if (tt.length) blk.push("tickets:\n" + tt.map(t => `  - ${t}`).join("\n"))
   lines.push(blk.join("\n"))
 }

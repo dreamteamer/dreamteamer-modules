@@ -24,8 +24,8 @@ import { DATA, SCRATCH } from "../lib/workspace.mts"
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir, recordId } from "../lib/records.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -61,7 +61,7 @@ for (const line of fs.readFileSync(candFile, "utf8").split("\n")) {
 
 /** When did this item happen? Sessions and tickets carry their own date; a commit carries the
  *  candidate's, which is close enough to place it inside one of the candidate's own windows. */
-const dayOf = v => (typeof v === "string" ? v.slice(0, 10) : "")
+const dayOf = (v: unknown) => (typeof v === "string" ? v.slice(0, 10) : "")
 
 const byCandidate = new Map()
 const activities = []
@@ -101,9 +101,9 @@ const meetingDay = new Map()
 }
 
 /** The activity an item belongs to: narrowest containing window, else nearest by start. */
-function pick(acts, day) {
+function pick(acts: Record<string, any>[], day: string) {
   if (acts.length === 1) return acts[0]
-  const span = a => {
+  const span = (a: Record<string, any>) => {
     const s = dayOf(a.fields.started),
       e = dayOf(a.fields.ended) || s
     return { s, e, width: Date.parse(e) - Date.parse(s) || 0 }
@@ -129,7 +129,7 @@ let sessionsAttached = 0,
   ticketsAttached = 0,
   meetingsAttached = 0
 const assign = new Map() // activity file → { sessions:Set, commits:Set, branches:Set, tickets:Set, meetings:Set }
-const bucket = f => {
+const bucket = (f: string) => {
   if (!assign.has(f))
     assign.set(f, {
       sessions: new Set(),
@@ -172,8 +172,9 @@ for (const a of activities) {
     unchanged++
     continue
   }
-  const merge = (existing, extra) => [...new Set([...(existing ?? []), ...extra])].sort()
-  const next = {
+  const merge = (existing: unknown[] | undefined, extra: unknown[]) =>
+    [...new Set([...(existing ?? []), ...extra])].sort()
+  const next: Record<string, any> = {
     ...a.fields,
     sessions: merge(a.fields.sessions, add.sessions),
     commits: merge(a.fields.commits, add.commits),

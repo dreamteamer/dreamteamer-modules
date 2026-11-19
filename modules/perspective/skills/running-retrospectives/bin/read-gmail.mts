@@ -34,8 +34,8 @@ import path from "node:path"
 
 const READER = "read-gmail@1"
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -72,7 +72,7 @@ const concurrency = Math.max(1, Number(opt("concurrency", "6")) || 6)
 const sourceId = `${who()}/gmail--${slug(as)}`
 const sourceRef = `perspective/sources/${sourceId}`
 
-function unavailable(why) {
+function unavailable(why: string) {
   if (!dry)
     writeSource(
       recordPath("sources", sourceId, "source", dataRoot),
@@ -101,7 +101,7 @@ if (!token) {
 // Every handle the contributor is known by, so a message from a second address of theirs counts as theirs.
 const contributorHandles = new Set([contributor, as])
 for (const f of listRecords(path.join(collectionDir("users", dataRoot), who()))) {
-  const h = (readRecord(f).fields.handles ?? []).map(x => String(x).toLowerCase())
+  const h = (readRecord(f).fields.handles ?? []).map((x: unknown) => String(x).toLowerCase())
   if (h.includes(contributor)) for (const x of h) if (x.includes("@")) contributorHandles.add(x)
 }
 
@@ -119,11 +119,11 @@ const wanted = limit ? ids.slice(0, limit) : ids
 
 // ── fetch, bounded concurrency ───────────────────────────────────────────────────────────────────
 const HEADERS = ["From", "To", "Cc", "Subject"]
-const summaries = []
+const summaries: Record<string, any>[] = []
 let fetched = 0,
   dropped = 0,
   failed = 0
-async function worker(queue) {
+async function worker(queue: string[]) {
   for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
     try {
       const t = await gmail(token, `threads/${id}`, { format: "metadata", metadataHeaders: HEADERS })

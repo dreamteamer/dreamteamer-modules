@@ -22,8 +22,8 @@ import {
 import { commitIntent } from "../lib/commitIntent.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -87,7 +87,7 @@ const meetingMinutes = new Map() // `meetings/<id>` → minutes
   }
 }
 /** The scheduled minutes of an activity's meetings, or undefined when none of them is measurable. */
-const minutesOf = refs => {
+const minutesOf = (refs: string[]) => {
   let total = 0,
     found = 0
   for (const r of refs) {
@@ -125,7 +125,9 @@ for (const file of listRecords(activityDir)) {
   // writing nothing says nobody measured. The second is the fact. But a stale number left by an
   // earlier clustering is a third thing and the worst of them, so the keys are DELETED rather than
   // skipped: `undefined` removes the field, which is what the writer does with it.
-  const zeroed = Object.fromEntries(Object.keys(SUM).map(k => [k, undefined]))
+  const zeroed: Record<string, undefined> = Object.fromEntries(
+    Object.keys(SUM).map((k): [string, undefined] => [k, undefined])
+  )
   // The calendar half, owned here like every other number on an activity. `meeting_count` is a
   // count of refs, so it is 0 when there are none — that IS measured. `meeting_minutes` is absent
   // unless the parking lot could say, for the same reason the token figures are.
@@ -137,8 +139,8 @@ for (const file of listRecords(activityDir)) {
           ...fields,
           ...zeroed,
           session_count: 0,
-          tokens_total: undefined,
-          correction_ratio: undefined,
+          tokens_total: undefined as number | undefined,
+          correction_ratio: undefined as number | undefined,
           commit_count: (fields.commits ?? []).length,
           ...meetings,
         }
@@ -283,7 +285,7 @@ for (const file of listRecords(projDir)) {
     commits_bug: acc.commits_bug,
     commits_change_request: acc.commits_change_request,
   }
-  const has = k => acc[k] > 0
+  const has = (k: string) => acc[k] > 0
   const next: Record<string, any> = {
     ...fields,
     // NO `activities_count`: `projects` has no such field — the count comes off the generated

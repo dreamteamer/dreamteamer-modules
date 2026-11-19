@@ -54,6 +54,7 @@ import {
   listRecords,
   readRecord,
   compiledStorage,
+  type CompiledStorage,
   recordFileFor,
   shippedCollections,
   collectionStorage,
@@ -67,7 +68,7 @@ import {
 /** Each observed-world collection and the REAL collection its `real` field must point at. One-way,
  *  many-to-one: several contributors' observed copies of one thing point at the same real record,
  *  and no real record ever points back. */
-const REAL_TARGET = {
+const REAL_TARGET: Record<string, string> = {
   users: "users",
   projects: "projects",
   decisions: "decisions",
@@ -77,7 +78,7 @@ const REAL_TARGET = {
 const SHA = /^[0-9a-f]{7,40}$/
 /** What a decision's `source_ref` must look like, per `source_kind`. A shape, not a lookup — the
  *  lookup happens too, but only for the refs that point inside this module's own data. */
-const SOURCE_REF_SHAPE = {
+const SOURCE_REF_SHAPE: Record<string, { test: (ref: string) => boolean; want: string }> = {
   "git-commit": { test: ref => SHA.test(ref), want: "a 7–40 hex commit SHA" },
   "agent-session": {
     test: ref => ref.startsWith("perspective/conversations/"),
@@ -148,7 +149,7 @@ function workspaceRootFromCwd(start = process.cwd()) {
   }
 }
 
-function dataRootFromArgv(argv) {
+function dataRootFromArgv(argv: string[]): string {
   const i = argv.indexOf("--data-root")
   if (i >= 0) {
     const value = argv[i + 1]
@@ -177,7 +178,7 @@ for (const collection of COLLECTIONS) {
   const { dir, suffix } = collectionStorage(collection, dataRoot)
   for (const file of listRecords(dir)) if (file.endsWith(`.${suffix}.md`)) collectionOfFile.set(file, collection)
 }
-const rel = file => path.relative(path.dirname(dataRoot), file)
+const rel = (file: string) => path.relative(path.dirname(dataRoot), file)
 
 // ── the PEER collections a ref may legally point OUT of this module at ──────────────────────────
 // A ref into a peer is RESOLVED, not only shape-checked: a decision citing a meeting that was
@@ -191,7 +192,7 @@ const rel = file => path.relative(path.dirname(dataRoot), file)
 // fields are innocent would block that workspace for someone else's absence.
 const workspaceRoot = path.dirname(dataRoot)
 const PEER = (() => {
-  const out = {}
+  const out: Record<string, CompiledStorage & { installed: boolean }> = {}
   // THE REAL WORLD. Every `perspective/*` collection carries `real`, a one-way SOFT
   // reference to the record it appears to be — a plain string rather than a reference type, so the
   // engine's own `check` ignores it whether the collection is absent or the record is. That is deliberate (a
@@ -207,14 +208,16 @@ const PEER = (() => {
     // the compiled storage block, parent folder included when the collection is stored under
     // another (`storage.under`) — `lib/records.mjs` owns the rule, and `refTarget` probes through it
     const storage = compiledStorage(workspaceRoot, collection, fallbackPath, fallbackSuffix)
-    out[collection] = { ...storage, installed: storage.compiled || fs.existsSync(storage.dir) }
+    out[collection] = { ...storage, installed: Boolean(storage.compiled) || fs.existsSync(storage.dir) }
   }
   return out
 })()
 const peerGaps = new Map() // collection → how many refs could not be resolved because it is absent
 
 /** A qualified ref → where its file would be. Null when the ref names no collection this can resolve. */
-function refTarget(ref) {
+function refTarget(
+  ref: unknown
+): { collection: string; id: string; file: string; peer?: CompiledStorage & { installed: boolean } } | null {
   const parts = String(ref).split("/")
   if (parts.length < 2) return null
   if (parts[0] !== "perspective") {
@@ -236,7 +239,7 @@ function refTarget(ref) {
 }
 
 /** Does the record a ref names exist? `null` = unanswerable, because the peer collection is absent. */
-function resolves(target) {
+function resolves(target: NonNullable<ReturnType<typeof refTarget>>): boolean | null {
   if (target.peer && !target.peer.installed) {
     peerGaps.set(target.collection, (peerGaps.get(target.collection) ?? 0) + 1)
     return null
@@ -244,13 +247,13 @@ function resolves(target) {
   return fs.existsSync(target.file)
 }
 
-const violations = []
-const fail = (file, rule) => violations.push(`${rel(file)}: ${rule}`)
+const violations: string[] = []
+const fail = (file: string, rule: string) => violations.push(`${rel(file)}: ${rule}`)
 /** Not a violation: a state a run in flight legitimately passes through. Printed, never exited on. */
-const warnings = []
-const warn = (file, note) => warnings.push(`⚠ ${rel(file)}: ${note}`)
+const warnings: string[] = []
+const warn = (file: string, note: string) => warnings.push(`⚠ ${rel(file)}: ${note}`)
 /** A field the schema types as an array, read defensively — a hand-edit may leave a bare string. */
-const list = value =>
+const list = (value: unknown): any[] =>
   Array.isArray(value) ? value : value === undefined || value === null || value === "" ? [] : [value]
 
 const files = [...collectionOfFile.keys()]
@@ -267,7 +270,7 @@ for (const file of files) {
  *  module is the `answer` on a question they were asked. Citing the QUESTION is not enough — an
  *  unanswered question is a question, and a finding may not be promoted to `confirmed` by the fact
  *  that somebody once thought of asking. The answer must actually be there. */
-function citesAnsweredQuestion(evidence) {
+function citesAnsweredQuestion(evidence: string[]): boolean {
   for (const ref of evidence) {
     const target = refTarget(ref)
     if (!target || target.collection !== "questions") continue
@@ -572,7 +575,7 @@ for (const [file, { fields }] of records) {
 function strandedCloneWarning() {
   const here = fileURLToPath(new URL("..", import.meta.url))
   if (!here.includes(`${path.sep}git_modules${path.sep}`)) return null // running from the module repo itself
-  const git = args => {
+  const git = (args: string[]) => {
     try {
       return execFileSync("git", ["-C", here, ...args], {
         encoding: "utf8",

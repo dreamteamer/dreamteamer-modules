@@ -51,33 +51,33 @@ export const JUDGED_KEYS = [
 ]
 const DENIAL_RE =
   /(user doesn'?t want to (proceed|take this action)|tool use was rejected|user (rejected|denied|refused) (the|this))/i
-const bump = (m, k, n = 1) => k && m.set(k, (m.get(k) ?? 0) + n)
+const bump = (m: Map<string, number>, k: string | null | undefined, n = 1) => k && m.set(k, (m.get(k) ?? 0) + n)
 /** Words, the unit everything normalises to — a PRD is words and so is code. Whitespace runs, nothing cleverer. */
-export const words = t => (String(t ?? "").match(/\S+/g) ?? []).length
-const top = m => [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ""
+export const words = (t: unknown) => (String(t ?? "").match(/\S+/g) ?? []).length
+const top = (m: Map<string, number>) => [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? ""
 
 export const USER_ACTS_KEPT = ["directive", "correction", "rejection", "approval", "question", "context"]
 export const AGENT_ACTS_KEPT = ["plan", "question", "refusal"]
 
 export async function computeMetrics(
-  file,
-  { session_id = "", account = "", subagent_paths = [], orphan_subagents = [] } = {}
-) {
+  file: string,
+  { session_id = "", account = "", subagent_paths = [] as string[], orphan_subagents = [] as string[] } = {}
+): Promise<Record<string, any>> {
   // Some .jsonl files carry NO timestamp on any line — a file of pure `/compact` checkpoints, every
   // line `type: summary` and no conversation at all, is the case. started_at is required and is what the id and every window are keyed on, so it falls back
   // to the file's mtime and `dated_from_mtime` says so rather than the record landing in 1970.
   const s = {
-    cwds: new Map(),
-    dirs: new Map(),
-    skills: new Set(),
-    commands: new Set(),
-    filesEdited: new Set(),
-    userActs: new Map(),
-    agentActs: new Map(),
-    seenUsage: new Set(),
-    tools: new Set(),
-    mcps: new Set(),
-    skillsUsed: new Set(),
+    cwds: new Map<string, number>(),
+    dirs: new Map<string, number>(),
+    skills: new Set<string>(),
+    commands: new Set<string>(),
+    filesEdited: new Set<string>(),
+    userActs: new Map<string, number>(),
+    agentActs: new Map<string, number>(),
+    seenUsage: new Set<string>(),
+    tools: new Set<string>(),
+    mcps: new Set<string>(),
+    skillsUsed: new Set<string>(),
     turnsUser: 0,
     turnsAssistant: 0,
     toolCalls: 0,
@@ -91,16 +91,23 @@ export async function computeMetrics(
     outputWords: 0,
     correctionWords: 0,
     interruptions: 0,
-    firstTs: null,
-    lastTs: null,
+    firstTs: null as number | null,
+    lastTs: null as number | null,
     activeMs: 0,
-    prevTs: null,
+    prevTs: null as number | null,
     aiTitle: "",
     firstUserText: "",
   }
   let lastAgentAskedQuestion = false,
     prevHadTools = false,
-    pending = null
+    pending: {
+      id: string
+      text: string
+      tools: number
+      hasSubagent: boolean
+      hasAskUser: boolean
+      hasPlanTool: boolean
+    } | null = null
   const flushAssistant = () => {
     if (!pending) return
     s.turnsAssistant++
@@ -116,7 +123,10 @@ export async function computeMetrics(
     prevHadTools = pending.tools > 0
     pending = null
   }
-  const onTool = (t, p) => {
+  const onTool = (
+    t: Record<string, any>,
+    p: { hasSubagent: boolean; hasAskUser: boolean; hasPlanTool: boolean; tools: number } | null
+  ) => {
     s.toolCalls++
     s.tools.add(t.name)
     // `mcp__<server>__<tool>` is the harness's own spelling — the server is the middle segment.
@@ -148,7 +158,7 @@ export async function computeMetrics(
     }
   }
 
-  await eachLine(file, r => {
+  await eachLine(file, (r: Record<string, any>) => {
     const ts = r.timestamp ? Date.parse(r.timestamp) : NaN
     if (!Number.isNaN(ts)) {
       if (s.firstTs === null || ts < s.firstTs) s.firstTs = ts
@@ -226,7 +236,7 @@ export async function computeMetrics(
 
   for (const sc of [...subagent_paths, ...orphan_subagents]) {
     try {
-      await eachLine(sc, r => {
+      await eachLine(sc, (r: Record<string, any>) => {
         if (!r.message) return
         if (r.type !== "assistant") {
           for (const tr of toolResultsOf(r.message.content)) if (tr.is_error) s.toolErrors++
@@ -253,7 +263,7 @@ export async function computeMetrics(
   const title = (s.aiTitle || s.firstUserText.split("\n").find(l => l.trim()) || "(untitled session)")
     .trim()
     .slice(0, 140)
-  const m = {
+  const m: Record<string, any> = {
     session_id,
     harness: "claude-code",
     account,
@@ -294,7 +304,7 @@ export async function computeMetrics(
 }
 
 /** THE GATE — about VOLUME, never value. Fails → depth: minimal, no model involved. */
-export function gate(m, s) {
+export function gate(m: Record<string, any>, s: { firstUserText: string; [key: string]: any }) {
   const userChars = s.firstUserText.length // cheap proxy; the trimmed port keeps no per-turn char totals
   let reason = ""
   if (m.turns_user === 0) reason = "no operator turns"

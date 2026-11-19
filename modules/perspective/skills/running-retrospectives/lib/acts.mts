@@ -8,14 +8,28 @@
 // corrects and adds work is a `correction`, because the correction is the expensive part.
 // Everything unmatched is a `directive`, which is the honest default for a user turn.
 
-const first = (rules, text, ctx) => {
+/** What the classifier knows about a turn beyond its text. */
+export interface TurnContext {
+  lastAgentAskedQuestion?: boolean
+  hasSubagent?: boolean
+  hasAskUser?: boolean
+  hasTools?: boolean
+  prevHadTools?: boolean
+  userTurns?: number
+  [key: string]: unknown
+}
+
+/** One rule: an act's name, and the test a turn must pass for it. */
+type Rule = [string, (t: string, c: TurnContext) => unknown]
+
+const first = (rules: Rule[], text: string, ctx: TurnContext) => {
   for (const [name, test] of rules) if (test(text, ctx)) return name
   return null
 }
 
-const shortish = (t, n = 60) => t.length <= n
+const shortish = (t: string, n = 60) => t.length <= n
 
-const USER_RULES = [
+const USER_RULES: Rule[] = [
   [
     "approval",
     t =>
@@ -70,7 +84,7 @@ const USER_RULES = [
   ],
 ]
 
-const AGENT_RULES = [
+const AGENT_RULES: Rule[] = [
   [
     "refusal",
     t =>
@@ -113,10 +127,10 @@ export const USER_ACTS = [
 ]
 export const AGENT_ACTS = ["plan", "execution", "report", "question", "assertion", "refusal", "handoff"]
 
-export function classifyUserTurn(text, ctx) {
+export function classifyUserTurn(text: string, ctx: TurnContext): string {
   return first(USER_RULES, text, ctx) ?? "directive"
 }
 
-export function classifyAgentTurn(text, ctx) {
+export function classifyAgentTurn(text: string, ctx: TurnContext): string {
   return first(AGENT_RULES, text, ctx) ?? "assertion"
 }

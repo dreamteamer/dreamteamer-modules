@@ -24,8 +24,8 @@ import { DATA, slug } from "../lib/workspace.mts"
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from "../lib/records.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -61,13 +61,13 @@ for (const name of fs.readdirSync(fromAvatars)) {
   if (cut > 0) available.set(name.slice(0, cut), path.join(fromAvatars, name))
 }
 
-const list = v => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
+const list = (v: unknown): any[] => (Array.isArray(v) ? v : v === undefined || v === null || v === "" ? [] : [v])
 
 /** Every slug this person could legitimately be filed under. A handle that is an email contributes
  *  its LOCAL PART too — `sam.d@acme.example` is filed as `sam-d` in an address book keyed on
  *  people, not on mailboxes. */
-function keysOf(fields) {
-  const out = new Set()
+function keysOf(fields: Record<string, any>): Set<string> {
+  const out = new Set<string>()
   if (fields.name) out.add(slug(fields.name))
   for (const h of list(fields.handles)) {
     const s = String(h)

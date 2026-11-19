@@ -30,8 +30,8 @@ import { DATA } from "../lib/workspace.mts"
 import { listRecords, readRecord, writeRecord, contributorOf, collectionDir } from "../lib/records.mts"
 
 const argv = process.argv.slice(2)
-const flag = n => argv.includes(`--${n}`)
-const opt = (n, d = "") => {
+const flag = (n: string) => argv.includes(`--${n}`)
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -49,7 +49,7 @@ let _who = null
 const who = () => (_who ??= contributorOf(retrospective, dataRoot))
 
 /** Millis, or NaN. A record whose timestamp will not parse is skipped, never defaulted to now. */
-const ms = v => {
+const ms = (v: unknown) => {
   if (v instanceof Date) return v.getTime()
   const t = Date.parse(String(v ?? ""))
   return Number.isNaN(t) ? NaN : t
@@ -85,21 +85,21 @@ const STOP = new Set(
     " "
   )
 )
-const bag = s =>
+const bag = (s: unknown) =>
   new Set(
     String(s ?? "")
       .toLowerCase()
       .match(/[a-z][a-z0-9-]{2,}/g)
       ?.filter(w => !STOP.has(w)) ?? []
   )
-const overlap = (a, b) => {
+const overlap = (a: Set<string>, b: Set<string>) => {
   let n = 0
   for (const w of a) if (b.has(w)) n++
   return n
 }
 
 /** The agent-decision-log row behind a `decision-log` decision — its instant and its own words. */
-function logRow(sourceRef) {
+function logRow(sourceRef: unknown) {
   const m = /^agent-decision-log\/(.+)$/.exec(String(sourceRef ?? ""))
   if (!m) return null
   const file = path.join(dataRoot, "agent-decision-log", `${m[1]}.agent-decision.md`)
@@ -111,7 +111,7 @@ function logRow(sourceRef) {
 }
 
 // ── the pass ───────────────────────────────────────────────────────────────────────────────────
-const tally = {
+const tally: Record<string, number> = {
   direct: 0,
   contained: 0,
   disambiguated: 0,

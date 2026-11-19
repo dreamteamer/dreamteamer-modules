@@ -13,13 +13,20 @@
 //   node bin/digest.mjs <transcript.jsonl|conversation-id> [--budget 12000] [--data-root <dir>] [--json-metrics]
 import fs from "node:fs"
 import path from "node:path"
-import { eachLine, textOf, toolUsesOf, toolResultsOf, classifyUserLine, assistantMessageId } from "../lib/transcript.mts"
+import {
+  eachLine,
+  textOf,
+  toolUsesOf,
+  toolResultsOf,
+  classifyUserLine,
+  assistantMessageId,
+} from "../lib/transcript.mts"
 import { DATA, render } from "../lib/workspace.mts"
 import { readRecord, recordPath } from "../lib/records.mts"
 import { computeMetrics } from "../lib/metrics.mts"
 
 const argv = process.argv.slice(2)
-const opt = (n, d = "") => {
+const opt = (n: string, d = "") => {
   const i = argv.indexOf(`--${n}`)
   return i >= 0 && argv[i + 1] ? argv[i + 1] : d
 }
@@ -53,11 +60,11 @@ if (argv.includes("--json-metrics")) {
 }
 
 // ---- second pass: collect turns -------------------------------------------------------------
-const userTurns = []
-const agentTurns = []
-const errors = []
-let pendingId = null
-let pending = null
+const userTurns: { text: string; act?: string; [key: string]: unknown }[] = []
+const agentTurns: { i: number; text: string; tools: string[] }[] = []
+const errors: string[] = []
+let pendingId: string | null = null
+let pending: { i: number; text: string; tools: string[] } | null = null
 const flush = () => {
   if (pending && (pending.text.trim() || pending.tools.length)) agentTurns.push(pending)
   pending = null
@@ -97,7 +104,7 @@ flush()
 // get the rest and ARE sampled, evenly, because their job here is only to show the shape of the work.
 const userBudget = Math.floor(BUDGET * 0.7)
 const perUser = Math.max(200, Math.floor(userBudget / Math.max(1, userTurns.length)))
-const clip = (t, n) => (t.length > n ? t.slice(0, n) + ` …[+${t.length - n} chars]` : t)
+const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n) + ` …[+${t.length - n} chars]` : t)
 
 const agentBudget = BUDGET - userBudget
 const perAgent = 220
