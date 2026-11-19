@@ -752,7 +752,10 @@ const wanted = (v: unknown): string => {
  * Pass `resolve` whenever the condition may hop a reference: a non-`_` key under a field is a
  * one-hop reference traversal, and `matchesFilter` narrows to false with no resolver wired.
  */
-export function verdictLine(expectation: Row, actual: unknown, resolve?: (ref: string) => unknown): string {
+/** The engine's ref resolver, as `dt.recordResolver(store)` returns it — what `matchesFilter` hops through. */
+type Resolver = ReturnType<Api["recordResolver"]>
+
+export function verdictLine(expectation: Row, actual: unknown, resolve?: Resolver): string {
   const entries = Object.entries(expectation ?? {})
   const bare = entries.length > 0 && entries.every(([k]) => k.startsWith("_"))
   if (!bare && entries.length !== 1)
@@ -805,7 +808,7 @@ export function exitFor(state: string): number {
  * `resolve` is the caller's — `recordResolver(store)` when the filter hops a reference, `null` when
  * it does not. A hop with no resolver narrows, which is the engine filter's fail-closed posture.
  */
-export function countMatching(store: Store, collection: string, where: unknown, resolve?: unknown): number {
+export function countMatching(store: Store, collection: string, where: unknown, resolve?: Resolver): number {
   let n = 0
   for (const { id, fields } of store.readAll(collection)) {
     if (where && !dt.matchesFilter({ ...fields, id }, where, resolve)) continue

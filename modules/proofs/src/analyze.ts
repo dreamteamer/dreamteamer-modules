@@ -43,7 +43,7 @@ export function analyze(draft: CompileDraft): { errors: string[]; warnings: stri
     // warnings, not errors: a step is a shell string, and a brace nobody substitutes is as likely
     // to be `awk '{print}'` as a typo'd `{recrod}` — naming it costs a line and refuses nothing
     for (const w of stepWarnings(proof)) warnings.push(`${rt}: ${w}`)
-    for (const ref of proof?.about ?? []) proven.add(String(ref))
+    for (const ref of (proof as { about?: Iterable<unknown> } | null)?.about ?? []) proven.add(String(ref))
   }
 
   // ---- coverage: one line on every compile, even at zero
