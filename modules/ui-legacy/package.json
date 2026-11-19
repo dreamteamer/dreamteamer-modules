@@ -28,7 +28,7 @@
 	},
 	"dreamteamer": {
 		"title": "UI (legacy, Vue)",
-		"description": "The legacy Vue dreamteamer UI, which @dreamteamer/ui was through 0.3 (0.4 is the React app; dt web serves it with --app legacy-ui): the nav, lists, boards, calendars, maps, record pages and the schema editor — one Vue app that a host mounts over a transport (postMessage in the VS Code extension, HTTP under dt web). Ships a library build, a browser page build and its source. A library: no collection, no verb.",
+		"description": "The legacy Vue dreamteamer UI — @dreamteamer/ui through 0.3; dt web serves it with --app legacy-ui: the nav, lists, boards, calendars, maps, record pages and the schema editor — one Vue app that a host mounts over a transport (postMessage in the VS Code extension, HTTP under dt web). Ships a library build, a browser page build and its source. A library: no collection, no verb.",
 		"engine": ">=0.43.0"
 	},
 	"devDependencies": {
