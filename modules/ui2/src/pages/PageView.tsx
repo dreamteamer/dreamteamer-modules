@@ -18,6 +18,7 @@
  * The view is looked up LIVE by id, and each embedded browse is keyed on its child's fingerprint: a browse reads its
  * config once, so an edited child reaches the screen through a remount.
  */
+import { useTabTitle } from "../components/useTabTitle.ts"
 import { useSignal } from "../AppContext.tsx"
 import { Browse } from "../browse/Browse.tsx"
 import { Icon } from "../components/Icon.tsx"
@@ -68,6 +69,7 @@ export function PageView({
   const views = useSignal(uiViews) ?? []
   const { modules } = useModules()
   const view = views.find(v => v.id === viewId)
+  useTabTitle(view ? viewLabel(view) : undefined)
   if (!view)
     return (
       <div className={listEmpty}>

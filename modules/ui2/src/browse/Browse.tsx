@@ -13,6 +13,7 @@
  * the component on what it consumed at the start (the collection's list block, its sources, the view record), so
  * a change to any of them remounts it.
  */
+import { useTabTitle } from "../components/useTabTitle.ts"
 import { useEffect, useState } from "react"
 import { useApp, useSignal } from "../AppContext.tsx"
 import { Icon } from "../components/Icon.tsx"
@@ -157,6 +158,7 @@ export function Browse({
 
   const segments = collection.split("/").filter(Boolean)
   const heading = title ?? row?.title ?? formatTitle(segments[segments.length - 1] ?? collection)
+  useTabTitle(config?.embedded ? undefined : heading, row?.nav.icon)
 
   /** A field path as a person reads it: `project.status` → `Project › Status`. */
   const pathLabel = (path: string) => {

@@ -35,6 +35,7 @@ import { listSeed, scratchKey as scratchKeyFor } from "../lib/listSeed.ts"
 import { effectiveLimit } from "../lib/pageSize.ts"
 import { createRoute, pathOf, queryOf, recordRoute, withQuery } from "../lib/createRoute.ts"
 import { recordLabel } from "../lib/schema.ts"
+import { seedTitle } from "../lib/tabs.ts"
 import { lists } from "../registry/index.ts"
 import { resolveView } from "../registry/resolve.ts"
 import {
@@ -417,7 +418,12 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
     hasNext: page * limit < total,
     prevPage: () => page > 1 && setPage(page - 1),
     nextPage: () => page * limit < total && setPage(page + 1),
-    openRecord: (record: Row) => navigate(recordRoute(collection, record.id, base)),
+    openRecord: (record: Row) => {
+      const to = recordRoute(collection, record.id, base)
+      // the tab opens already named (lib/tabs.ts): the row says what the record is called
+      seedTitle(to, recordLabel(row, record, record.id), row?.nav.icon)
+      navigate(to)
+    },
     recordTitleOf: (record: Row) => recordLabel(row, record, record.id),
     colorBy,
     tintOf: (record: Row) => tintStyle(tintFor(colorBy, fields, record)),

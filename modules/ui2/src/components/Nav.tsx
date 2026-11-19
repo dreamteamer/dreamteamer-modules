@@ -52,6 +52,7 @@ import {
 } from "../lib/navTree.ts"
 import { dragWidth, keyWidth, loadNavWidth, navWidthBounds, saveNavWidth } from "../lib/navWidth.ts"
 import { openMenu } from "../lib/openMenu.ts"
+import { seedTitle } from "../lib/tabs.ts"
 import { Icon } from "./Icon.tsx"
 import { NavMenu } from "./NavMenu.tsx"
 import { PaneLevel } from "./PaneLevel.tsx"
@@ -293,8 +294,11 @@ export function Nav() {
     arranging,
     toggle,
     activate: n => {
-      if (n.route) navigate(n.route)
-      else if (n.children?.length) toggle(n.key)
+      if (n.route) {
+        // the tab opens already named (lib/tabs.ts): the nav entry's label
+        seedTitle(n.route, n.label, n.icon)
+        navigate(n.route)
+      } else if (n.children?.length) toggle(n.key)
     },
     dragStart: key => {
       dragging.current = key

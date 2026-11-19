@@ -27,6 +27,7 @@ import { createRecord, getRecord, removeRecord, renameRecord, updateRecord, type
 import { useApp, useAsync, useRouteBase, useSignal } from "../AppContext.tsx"
 import { usePopover } from "../browse/usePopover.ts"
 import { Menu } from "../components/Menu.tsx"
+import { useTabTitle } from "../components/useTabTitle.ts"
 import { CommitButton } from "../components/CommitButton.tsx"
 import { Dialog } from "../components/Dialog.tsx"
 import { Icon } from "../components/Icon.tsx"
@@ -229,6 +230,8 @@ export function RecordPage({
   const title = create
     ? `New ${row?.record_type ?? "record"}`
     : recordLabel(row, current, id ?? "", { resolve, isReference })
+  // before the record and its collection's row have arrived the title is the id: the tab keeps the one it has
+  useTabTitle(title, row?.nav.icon, !create && (!record || !row))
   const subtitle =
     !create && row?.record.subtitle
       ? (tryRenderDisplay(row.record.subtitle, current, { resolve, isReference }) ?? "").replace(/\s+/g, " ").trim()

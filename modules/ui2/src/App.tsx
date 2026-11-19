@@ -24,7 +24,9 @@ import { PageView } from "./pages/PageView.tsx"
 import { ViewPage } from "./pages/ViewPage.tsx"
 import { SchemaTab } from "./settings/SchemaTab.tsx"
 import { AppPage } from "./modules/host.tsx"
-import { appShell } from "./lib/appShell.ts"
+import { appShell, appTabs } from "./lib/appShell.ts"
+import { SearchModal } from "./components/SearchModal.tsx"
+import { TabStrip } from "./components/TabStrip.tsx"
 import { cx, error, page as pageFrame, subtle } from "./styles/classes.ts"
 
 /** The nav (its own width, lib/navWidth.ts) beside the page; on a narrow window the nav stacks above it. */
@@ -37,6 +39,8 @@ const shellCls = "grid grid-cols-[auto_1fr] h-full max-[720px]:grid-cols-1 max-[
  */
 const shellApp = "pt-2 bg-canvas"
 const sheetCls = "relative bg-surface rounded-tl-sheet shadow-sheet"
+/** With the tab strip: the slide-over record panel opens under the 32px strip (record/RecordSidebar.tsx). */
+const shellTabs = "[--dt-rsb-top:calc(8px+32px)]"
 
 /** The page's place, in the shapes the pane reports (lib/panePlace.ts) — set on every route change. */
 const place = signal<PaneView>({ other: true })
@@ -145,20 +149,42 @@ export function App({ onMounted }: { onMounted?: () => void }) {
 
   if (out) return <p className="p-6 text-fg-subtle">{SIGNED_OUT}</p>
 
+  const pageArea = (
+    <>
+      {presentation.error && <p className={error}>{presentation.error}</p>}
+      {schema && (
+        // keyed on the PATH: a query (`?filter=…`) is the page's own state, written back as it changes; a module
+        // app keeps its frame across its own routes (`/a/<id>/…`), which it hears as messages
+        <Boundary key={pathOf(route).replace(/^(\/a\/[^/]+)\/.*$/, "$1")}>
+          <Page />
+        </Boundary>
+      )}
+    </>
+  )
+
   return (
     <AppContext.Provider value={app}>
-      <div className={cx(shellCls, appShell && shellApp)} data-shell>
+      <div
+        className={cx(shellCls, appShell && shellApp, appTabs && shellTabs)}
+        data-shell
+        data-shell-app={appShell || undefined}
+      >
         <Nav />
-        <main className={cx("overflow-auto min-w-0", appShell && sheetCls)}>
-          {presentation.error && <p className={error}>{presentation.error}</p>}
-          {schema && (
-            // keyed on the PATH: a query (`?filter=…`) is the page's own state, written back as it changes; a module
-            // app keeps its frame across its own routes (`/a/<id>/…`), which it hears as messages
-            <Boundary key={pathOf(route).replace(/^(\/a\/[^/]+)\/.*$/, "$1")}>
-              <Page />
-            </Boundary>
+        <main
+          className={cx("min-w-0", appShell && sheetCls, appTabs ? "flex flex-col overflow-hidden" : "overflow-auto")}
+        >
+          {appTabs ? (
+            <>
+              <TabStrip />
+              {/* the page scrolls under the strip, which stays put */}
+              <div className="flex-1 min-h-0 overflow-y-auto">{pageArea}</div>
+            </>
+          ) : (
+            pageArea
           )}
         </main>
+        {/* Cmd/Ctrl-K: one search across the nav's collections; an editor has its own quick open */}
+        {appTabs && <SearchModal />}
       </div>
     </AppContext.Provider>
   )
