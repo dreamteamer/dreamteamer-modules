@@ -24,7 +24,19 @@ import { PageView } from "./pages/PageView.tsx"
 import { ViewPage } from "./pages/ViewPage.tsx"
 import { SchemaTab } from "./settings/SchemaTab.tsx"
 import { AppPage } from "./modules/host.tsx"
+import { appShell } from "./lib/appShell.ts"
 import { cx, error, page as pageFrame, subtle } from "./styles/classes.ts"
+
+/** The nav (its own width, lib/navWidth.ts) beside the page; on a narrow window the nav stacks above it. */
+const shellCls = "grid grid-cols-[auto_1fr] h-full max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_1fr]"
+/**
+ * THE BROWSER SHELL (lib/appShell.ts): the nav sits on the warm canvas and the page is a SHEET laid on it — a rounded
+ * top-left corner, a hairline ring and a soft shadow instead of a line between the two. The 8px above both keeps the
+ * nav's toolbar and the page's first header row one band, and lets the corner read. In an editor the page is the
+ * whole webview, as before.
+ */
+const shellApp = "pt-2 bg-canvas"
+const sheetCls = "relative bg-surface rounded-tl-sheet shadow-sheet"
 
 /** The page's place, in the shapes the pane reports (lib/panePlace.ts) — set on every route change. */
 const place = signal<PaneView>({ other: true })
@@ -135,12 +147,9 @@ export function App({ onMounted }: { onMounted?: () => void }) {
 
   return (
     <AppContext.Provider value={app}>
-      <div
-        className="grid grid-cols-[260px_1fr] h-full max-[720px]:grid-cols-1 max-[720px]:grid-rows-[auto_1fr]"
-        data-shell
-      >
+      <div className={cx(shellCls, appShell && shellApp)} data-shell>
         <Nav />
-        <main className="overflow-auto min-w-0">
+        <main className={cx("overflow-auto min-w-0", appShell && sheetCls)}>
           {presentation.error && <p className={error}>{presentation.error}</p>}
           {schema && (
             // keyed on the PATH: a query (`?filter=…`) is the page's own state, written back as it changes; a module

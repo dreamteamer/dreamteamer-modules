@@ -298,3 +298,38 @@ export function rowActive(nodeRoute: string | undefined, route: string): boolean
   const here = nodeRoute.includes("?") ? route : route.split("?")[0]!
   return here === nodeRoute || here.startsWith(`${nodeRoute}/`)
 }
+
+/** A route compared as text: decoded, without its query or a trailing slash. */
+function routeText(r: string): string {
+  let p = r.split("?")[0]!.replace(/\/+$/, "")
+  try {
+    p = decodeURIComponent(p)
+  } catch {
+    // a malformed escape: compare it as written
+  }
+  return p
+}
+
+/**
+ * The CURRENT row: the row whose route is the open page's, or the deepest one the page sits under (a record page marks
+ * its collection). The workspace node is the toolbar's name, never a row, so it is never current.
+ */
+export function currentKey(ix: NavIndex, route: string): string | null {
+  const here = routeText(route)
+  if (!here) return null
+  let best: { key: string; len: number } | null = null
+  for (const n of ix.byKey.values()) {
+    if (!n.route || n.kind === "workspace") continue
+    const r = routeText(n.route)
+    if (!r || (here !== r && !here.startsWith(`${r}/`))) continue
+    if (!best || r.length > best.len) best = { key: n.key, len: r.length }
+  }
+  return best?.key ?? null
+}
+
+/** The folders above `key`, outermost last — what must be open for the row to show. */
+export function foldersAbove(ix: NavIndex, key: string): string[] {
+  const out: string[] = []
+  for (let p = ix.parentOf.get(key); p && p.kind !== "workspace"; p = ix.parentOf.get(p.key)) out.push(p.key)
+  return out
+}
