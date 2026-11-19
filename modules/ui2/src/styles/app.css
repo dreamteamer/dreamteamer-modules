@@ -349,3 +349,13 @@
     justify-self: start;
   }
 }
+
+/* the skeleton rows' shimmer (lists/ListTable.tsx) — zero under reduced motion in the browser (browser.css) */
+@keyframes dt-skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}

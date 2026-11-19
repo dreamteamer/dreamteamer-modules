@@ -27,6 +27,7 @@ import { AppPage } from "./modules/host.tsx"
 import { appShell, appTabs } from "./lib/appShell.ts"
 import { SearchModal } from "./components/SearchModal.tsx"
 import { TabStrip } from "./components/TabStrip.tsx"
+import { ToastHost } from "./components/ToastHost.tsx"
 import { cx, error, page as pageFrame, subtle } from "./styles/classes.ts"
 
 /** The nav (its own width, lib/navWidth.ts) beside the page; on a narrow window the nav stacks above it. */
@@ -185,6 +186,8 @@ export function App({ onMounted }: { onMounted?: () => void }) {
         </main>
         {/* Cmd/Ctrl-K: one search across the nav's collections; an editor has its own quick open */}
         {appTabs && <SearchModal />}
+        {/* writes report as toasts in the browser shell; an editor has its own notifications */}
+        {appShell && <ToastHost />}
       </div>
     </AppContext.Provider>
   )

@@ -22,6 +22,7 @@
  * Full height (`fillsHeight`): the board fills the browse's box, each column stretches to it, and a column's card
  * list is the only scroll box — the header stays pinned above it.
  */
+import { reported } from "../lib/toasts.ts"
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
 import { rowContext } from "../lib/vscodeContext.ts"
 import { moveRecord, updateRecord, type Row } from "../api/client.ts"
@@ -185,8 +186,18 @@ export function ListKanban({ state }: ListProps) {
     if (!plan) return
     setSaving(true)
     try {
-      if (plan.fields) await updateRecord(state.collection, d.id, plan.fields)
-      if (plan.position) await moveRecord(state.collection, d.id, plan.position)
+      await reported(
+        async () => {
+          if (plan.fields) await updateRecord(state.collection, d.id, plan.fields)
+          if (plan.position) await moveRecord(state.collection, d.id, plan.position)
+        },
+        !plan.fields
+          ? "Card moved"
+          : column.ungrouped
+            ? `Moved to no ${columnField.field}`
+            : `Moved to ${String(column.value)}`,
+        "The card was not moved"
+      )
       state.reload()
     } catch (error) {
       // the engine validates on write: a rejected move (a required field, a value the enum refuses) is real news

@@ -21,6 +21,7 @@
  * change to what is asked — search, filter, sort, page size — starts again at page 1, and drops the selection,
  * which is scoped to the rows on screen.
  */
+import { reported } from "../lib/toasts.ts"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { listRecords, removeRecord, type Row } from "../api/client.ts"
 import type { FieldRow, SourceEntry } from "../api/types.ts"
@@ -449,7 +450,12 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
       if (!selectedIds.size) return
       setDeleting(true)
       try {
-        await Promise.all([...selectedIds].map(id => removeRecord(collection, id)))
+        const ids = [...selectedIds]
+        await reported(
+          () => Promise.all(ids.map(id => removeRecord(collection, id))),
+          ids.length === 1 ? "Record deleted" : `${ids.length} records deleted`,
+          "Not every record was deleted"
+        )
         setSelected(new Set())
         setReloads(n => n + 1)
       } finally {

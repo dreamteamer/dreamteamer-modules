@@ -22,6 +22,7 @@
  * A record whose root takes no write from here (`access: read`), or whose every field is computed, draws read
  * only, and says why. A re-read while edits are pending keeps the edits, and says the record changed under them.
  */
+import { reported } from "../lib/toasts.ts"
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { createRecord, getRecord, removeRecord, renameRecord, updateRecord, type RecordDoc } from "../api/client.ts"
 import { useApp, useAsync, useRouteBase, useSignal } from "../AppContext.tsx"
@@ -269,14 +270,18 @@ export function RecordPage({
     try {
       if (create) {
         const body = Object.fromEntries(Object.entries(edits).filter(([, v]) => v !== null && v !== ""))
-        const made = await createRecord(collection, body, target ?? undefined)
+        const made = await reported(
+          () => createRecord(collection, body, target ?? undefined),
+          "Record created",
+          "The record was not created"
+        )
         // the list it came from widens its Sources selection to show it (`lib/createdVisibility.ts`)
         const root = saveRootFor(sources, target)?.name
         if (root && made.id) noteCreated({ collection, id: made.id, source: root })
         go(recordRoute(collection, made.id, base))
         return
       }
-      const out = await updateRecord(collection, id!, edits)
+      const out = await reported(() => updateRecord(collection, id!, edits), "Saved", "The change was not saved")
       setCommitSample(n => n + 1)
       // an id template the edit changed moves the record
       if (out?.id && out.id !== id) {
@@ -351,7 +356,7 @@ export function RecordPage({
     setBusy(true)
     setDialogError(null)
     try {
-      await removeRecord(collection, id, force)
+      await reported(() => removeRecord(collection, id, force), "Record deleted", "The record was not deleted")
       go(listRoute(collection, base))
     } catch (err) {
       setReferenced(!force && isReferencedRefusal(err))

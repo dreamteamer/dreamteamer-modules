@@ -27,6 +27,7 @@ import { labelOf } from "../lib/formatTitle.ts"
 import { bucketize, UNGROUPED, type Bucket } from "../lib/grouping.ts"
 import { initialsOf } from "../lib/initialsOf.ts"
 import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/recordCache.ts"
+import { appShell } from "../lib/appShell.ts"
 import { resolveRowSize } from "../lib/rowSize.ts"
 import { DUPLICATES_FIELD } from "../lib/sources.ts"
 import type { ListProps } from "../registry/props.ts"
@@ -58,6 +59,18 @@ const headCell = (size: string) =>
   )
 /** A row; the last one in its band draws no bottom border. */
 const rowCls = "cursor-pointer [&:last-child>td]:border-b-0"
+
+/**
+ * SKELETON ROWS (cr-modules-022): the FIRST load under the browser shell draws nothing for SKELETON_HOLD_MS (a fast
+ * answer never flashes a placeholder), then skeleton rows at the table's own row height, one bar per column, so the
+ * frame the rows land in is already the right shape. In an editor the first load still says Loading…, as it always has.
+ */
+const SKELETON_HOLD_MS = 90
+const SKELETON_ROWS = 8
+/** A bar's width, varied by row and column so the block reads as text rather than as a grid of identical slabs. */
+const barWidth = (row: number, col: number) => `${45 + ((row * 37 + col * 23) % 45)}%`
+const skeletonBar =
+  "block h-2.5 rounded-pill bg-[linear-gradient(90deg,var(--dt-ink-2)_0%,var(--dt-ink-4)_50%,var(--dt-ink-2)_100%)] bg-size-[200%_100%] animate-[dt-skeleton-shimmer_1.4s_var(--dt-ease)_infinite]"
 /** An empty picture in a comfortable lead column: the record's initials in a disc. */
 const avatarCls = "inline-grid place-items-center w-12 h-12 rounded-full bg-bg-active text-fg-subtle font-semibold"
 
@@ -118,6 +131,15 @@ export function ListTable({ state }: ListProps) {
   const leadIsPicture = !!leadTarget && fileBases().some(b => b.collection === leadTarget)
   const span = columns.length + 1
 
+  const firstLoad = state.loading && records.length === 0
+  const [skeletonDue, setSkeletonDue] = useState(false)
+  useEffect(() => {
+    setSkeletonDue(false)
+    if (!firstLoad || !appShell) return
+    const t = setTimeout(() => setSkeletonDue(true), SKELETON_HOLD_MS)
+    return () => clearTimeout(t)
+  }, [firstLoad])
+
   return (
     <div className="flex-auto min-h-0 overflow-auto border border-border rounded-dt" data-table-scroll>
       <table className="w-full border-collapse">
@@ -154,7 +176,21 @@ export function ListTable({ state }: ListProps) {
             })}
           </tr>
         </thead>
-        {records.length === 0 ? (
+        {firstLoad && appShell ? (
+          <tbody aria-busy="true" aria-label="Loading records">
+            {skeletonDue &&
+              Array.from({ length: SKELETON_ROWS }, (_, r) => (
+                <tr key={r}>
+                  <td className={cx(cellCore, cellLayout.check, padY(rowSize))} />
+                  {columns.map((f, c) => (
+                    <td key={f.field} className={cx(cellCore, cellLayout.data, padY(rowSize))}>
+                      <span className={skeletonBar} style={{ width: barWidth(r, c) }} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+          </tbody>
+        ) : records.length === 0 ? (
           <tbody>
             <tr className={cx(rowCls, "hover:bg-bg-hover")}>
               <td
