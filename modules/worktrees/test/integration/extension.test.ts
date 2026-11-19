@@ -11,7 +11,11 @@ describe("the contribution, as the engine sees it", () => {
     const ws = workspace()
     const status = ws.dt("status")
     assert.equal(status.code, 0, status.stderr)
-    assert.match(status.stdout, /^extensions: @dreamteamer\/worktrees@0\.1\.0$/m)
+    // the version this package carries, whichever release that is
+    const version = JSON.parse(
+      fs.readFileSync(path.join(import.meta.dirname, "..", "..", "package.json"), "utf8")
+    ).version
+    assert.ok(status.stdout.split("\n").includes(`extensions: @dreamteamer/worktrees@${version}`), status.stdout)
     const help = ws.dt("help")
     assert.equal(help.code, 0, help.stderr)
     for (const verb of ["land <name|path>", "worktree add --name <n>"]) assert.ok(help.stdout.includes(verb), verb)
