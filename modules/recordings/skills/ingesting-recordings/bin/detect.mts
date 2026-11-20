@@ -31,12 +31,10 @@ const AUDIO = new Set([".m4a", ".mp3", ".wav", ".aac", ".mp4", ".m4b", ".ogg", "
 // The workspace root is WALKED up from this file, never taken from process.cwd(): run from another
 // folder, knownFingerprints() would find no records, every known file would come back new, and the
 // agent would mint duplicate records — the one failure this skill exists to prevent.
-// package-lock.json, not package.json — every module carries the latter; and a folder directly inside
-// `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
+// package-lock.json, not package.json — every module carries the latter.
 const workspaceRoot = () => {
   for (let d = path.dirname(fileURLToPath(import.meta.url)); ; d = path.dirname(d)) {
-    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
-    if (!inGitModules && fs.existsSync(path.join(d, "package-lock.json"))) return d
+    if (fs.existsSync(path.join(d, "package-lock.json"))) return d
     if (path.dirname(d) === d) throw new Error(`workspace root (package-lock.json) not found above ${import.meta.url}`)
   }
 }

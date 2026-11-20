@@ -43,7 +43,7 @@ The reader takes `--session <id>` for another session and `--transcript <path>` 
 
 **Bind** (`/session:bind`, `dt session bind`) — name the records this session works on:
 
-1. `dt session bind <collection>/<id>…` — adds each to `sessions/$CLAUDE_CODE_SESSION_ID` (`--session <id>` for another), writing the record when absent. Run it from anywhere: the record is written to the workspace the session runs in — never inside a `git_modules/` layer — so a record of a layer is bound from the HQ that reads it. Binding again changes nothing; an unknown ref is refused and nothing is written. Quote the `✔` line.
+1. `dt session bind <collection>/<id>…` — adds each to `sessions/$CLAUDE_CODE_SESSION_ID` (`--session <id>` for another), writing the record when absent. Run it from anywhere: the record is written to the workspace the session runs in. Binding again changes nothing; an unknown ref is refused and nothing is written. Quote the `✔` line.
 2. A line `… is also bound to sessions/<id>` names another session working on the same record. It is said, not refused: there is no lock. Read that session (`dt get sessions/<id>`) before you write over its work.
 3. A record's own `dt next` lists the sessions that bound it ("worked on in sessions/<id> — …"), read when asked, from every workspace the open one reads. Nothing is written to the record.
 4. When you stop: `dt session end [--outcome "<what landed, what is left>"]` — stamps `ended` once; again, it changes nothing.

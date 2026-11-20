@@ -10,15 +10,13 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
-// The workspace this module is installed in — the same walk the script does (a clone directly inside
-// `git_modules/` is never the workspace). Standalone, in the module's own repo, there is no workspace
+// The workspace this module is installed in — the same walk the script does. Standalone, in the module's own repo, there is no workspace
 // above: fall back to the module root so the cwd-independence test still runs (both cwds then die
 // identically, which is the same proof).
 const MODULE_ROOT = path.resolve(HERE, "..", "..", "..")
 const VAULT = (() => {
   for (let d = HERE; ; d = path.dirname(d)) {
-    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
-    if (!inGitModules && fs.existsSync(path.join(d, "package-lock.json"))) return d
+    if (fs.existsSync(path.join(d, "package-lock.json"))) return d
     if (path.dirname(d) === d) return MODULE_ROOT
   }
 })()

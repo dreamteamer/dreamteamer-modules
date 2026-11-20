@@ -69,8 +69,7 @@ dt session send <session> "<question>"                # ask a past session, thro
 ```
 
 `records` takes any number of references to records of any collection. A session record is written to
-the workspace the session runs in — never inside a `git_modules/` layer — so one harness session is
-one record, and a layer's record is bound from the workspace that reads the layer. Binding again changes
+the workspace the session runs in, so one harness session is one record. Binding again changes
 nothing. There is no claim and no lock: when another session already lists a record, `bind` names it
 in one line and binds anyway. A record's sessions are read when `dt next` asks, from every root the
 open workspace reads; nothing is written to the bound record, so a layer opened on its own sees only

@@ -32,8 +32,7 @@ and versioned on its own. The root is a private npm workspace and is never a dre
    skills hold `.mts` is built whole into `dist/skills` (`dreamteamer.skills: "dist/skills"`). The manifest
    names `dist/` for main, exports, the extension, `bin` and `dreamteamer.scripts`. The source never ships.
 6. **A script a person runs has its own entry.** Realpath both sides of the main guard, resolve the
-   workspace by walking up to `package-lock.json` and skipping a folder directly inside
-   `git_modules/` (`lib/findWorkspace.mjs`, one copy per module). A skill script is run from the
+   workspace by walking up to `package-lock.json` (`lib/findWorkspace.ts`, one copy per module). A skill script is run from the
    workspace root as `.dreamteamer/skills/<skill>/bin/<script>`; a module script by name, never by path —
    `dt run @dreamteamer/<id> <script>` (declared in `dreamteamer.scripts`), or through the module's npm `bin`.
 7. **A module that states a rule ships the script that enforces it** (`check-records`, from `bin/check-records.ts`, in

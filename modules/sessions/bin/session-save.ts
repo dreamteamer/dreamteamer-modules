@@ -237,7 +237,7 @@ export function fieldsOf(
 }
 
 /** The workspace root — one function for session-save and `dt session bind`, so a session is written to
- *  one workspace whichever writes first (lib/findWorkspace.mjs: never a folder directly inside git_modules/). */
+ *  one workspace whichever writes first (lib/findWorkspace.ts). */
 export { findWorkspace }
 
 /** Where a session's transcript copy is kept, as the template the record carries — the one place

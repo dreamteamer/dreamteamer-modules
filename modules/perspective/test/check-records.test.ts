@@ -876,23 +876,4 @@ describe("the data root", () => {
     assert.equal(r.status, 0, r.stdout + r.stderr)
     assert.match(r.stdout, /perspective records: [1-9]\d* checked/)
   })
-
-  // ⚠ THE SHAPE THE CLONE-AS-WORKSPACE RULE PROTECTS. `npm install` inside a module clone leaves a
-  // lockfile there, so a walk that stops at the first one resolves the CLONE as the workspace and
-  // checks a tree that is not the person's.
-  test("a lockfile directly inside git_modules/ is skipped, not taken for the workspace", () => {
-    const ws = tmpdir("cr-gm-")
-    fs.writeFileSync(path.join(ws, "package-lock.json"), "{}")
-    seedClean(path.join(ws, "data"))
-    const clone = path.join(ws, "git_modules", "extensions")
-    fs.mkdirSync(clone, { recursive: true })
-    fs.writeFileSync(path.join(clone, "package-lock.json"), "{}")
-    const r = spawnSync(process.execPath, [SCRIPT], { cwd: clone, encoding: "utf8" })
-    assert.equal(r.status, 0, r.stdout + r.stderr)
-    assert.match(
-      r.stdout,
-      /perspective records: [1-9]\d* checked/,
-      "it resolved the clone as the workspace and checked nothing"
-    )
-  })
 })

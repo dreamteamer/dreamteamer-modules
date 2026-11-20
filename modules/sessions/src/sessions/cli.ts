@@ -58,7 +58,7 @@ const shown = (v: unknown) => (v instanceof Date ? stamp(v) : String(v ?? ""))
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 /** The workspace a session record is written to: the one the session runs in — the nearest workspace
- *  above `from` that is not a folder directly inside git_modules/ (session-save resolves it the same way),
+ *  above `from` (session-save resolves it the same way),
  *  else `from` itself. One harness session is therefore one record. */
 export const writeRootOf = (from: string) => findWorkspace(from) ?? path.resolve(from)
 

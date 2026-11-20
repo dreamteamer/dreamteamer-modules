@@ -128,14 +128,10 @@ const COUNT_TAIL =
 /**
  * WHERE THE RECORDS ARE. Walk up from the CURRENT DIRECTORY, the way the engine resolves a workspace,
  * and REFUSE when no root is found rather than reporting a clean zero. A walk from the SCRIPT finds
- * the package's own root whenever the module is linked for preview (a `git_modules/` symlink into a
+ * the package's own root whenever the module is linked (a symlink into a
  * clone elsewhere) and looks for records in a tree that has none — and a guard that reports success
  * while checking nothing is byte-identical to a pass. There is deliberately NO script-relative
  * fallback: a fallback that can silently answer the wrong question is worse than an error.
- *
- * The `git_modules/` skip is the same rule `lib/workspace.mjs` carries: `npm install` inside a
- * module clone leaves a lockfile there, so a walk that stops at the first `package-lock.json` would
- * resolve the CLONE as the workspace.
  *
  * ZERO RECORDS IS STILL LEGAL. A workspace that has the module installed and has never run a
  * retrospective has no `data/perspective` at all, and `0 checked` is the honest answer for it. The
@@ -143,8 +139,7 @@ const COUNT_TAIL =
  */
 function workspaceRootFromCwd(start = process.cwd()) {
   for (let d = path.resolve(start); ; d = path.dirname(d)) {
-    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
-    if (!inGitModules && fs.existsSync(path.join(d, "package-lock.json"))) return d
+    if (fs.existsSync(path.join(d, "package-lock.json"))) return d
     if (path.dirname(d) === d) return null
   }
 }

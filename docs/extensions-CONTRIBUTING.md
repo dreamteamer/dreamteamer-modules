@@ -39,8 +39,6 @@ call it was is not.
 - **`tests/leak-gate.test.mjs`** — no source-vault name, no machine path, no real-looking address, no
   credential shape, no Drive id. Hebrew only in the files `.leak-scan-allow` names, each with its
   reason; that file is read by this test and by the `leak-scan` workflow, so there is one answer.
-- **`tests/resolvers-skip-git-modules.test.mjs`** — every script that finds its workspace by walking up
-  to `package-lock.json` skips a candidate sitting directly inside `git_modules/`.
 
 Three `record-judgement` tests read the compiled descriptor and skip by name when the package is
 checked out standalone; they run from a consuming workspace.

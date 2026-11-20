@@ -22,7 +22,7 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const SKIP = new Set(["node_modules", ".git", "git_modules", ".dreamteamer", ".claude", "tests", "dist"])
+const SKIP = new Set(["node_modules", ".git", ".dreamteamer", ".claude", "tests", "dist"])
 
 /** Every script source in the package that could be run as a script (dist/ is its build). */
 function scripts(dir = ROOT, out = []) {

@@ -17,9 +17,7 @@ import path from "node:path"
 function workspaceRoot(from = process.cwd()) {
   let dir = path.resolve(from)
   for (;;) {
-    // a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile
-    const inGitModules = path.basename(path.dirname(dir)) === "git_modules"
-    if (!inGitModules && fs.existsSync(path.join(dir, "package-lock.json"))) return dir
+    if (fs.existsSync(path.join(dir, "package-lock.json"))) return dir
     const up = path.dirname(dir)
     if (up === dir) throw new Error("not inside a dreamteamer workspace (no package-lock.json above " + from + ")")
     dir = up

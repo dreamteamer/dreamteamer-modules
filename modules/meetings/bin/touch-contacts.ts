@@ -78,10 +78,9 @@ export function computeRecent(meetings: MeetingRow[], contacts: ContactRow[], no
 
 // ── plumbing ─────────────────────────────────────────────────────────────────────────────────
 function workspaceRoot(from: string): string | null {
-  // package-lock.json, not package.json — a module folder carries the latter too. And a folder sitting directly inside `git_modules/` is a module clone, never the workspace, even when `npm install` left it a lockfile.
+  // package-lock.json, not package.json — a module folder carries the latter too.
   for (let d = path.resolve(from); d !== path.dirname(d); d = path.dirname(d)) {
-    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
-    if (!inGitModules && fs.existsSync(path.join(d, "package-lock.json"))) return d
+    if (fs.existsSync(path.join(d, "package-lock.json"))) return d
   }
   return null
 }
@@ -170,7 +169,7 @@ function main(argv: string[]) {
 
 /** Run as a script, including through a symlink. `process.argv[1]` is the path as invoked and
  *  `import.meta.url` the path resolved, so both are realpathed before they are compared; under a
- *  `git_modules/<name>` symlink a plain `===` is false and the script would exit 0 having done nothing. */
+ *  symlink (an `npm link`) a plain `===` is false and the script would exit 0 having done nothing. */
 const isMain = () => {
   if (!process.argv[1]) return false
   const real = (p: string) => {

@@ -237,11 +237,10 @@ const flag = (argv: string[], name: string) => {
 }
 const todayIso = () => new Date().toISOString().slice(0, 10)
 
-/** The workspace: the nearest folder above `from` holding a package-lock.json, skipping a folder
- *  directly inside `git_modules/`, which is a cloned module and never the workspace. */
+/** The workspace: the nearest folder above `from` holding a package-lock.json. */
 function workspaceRoot(from: string): string {
   for (let d = from; ; d = path.dirname(d)) {
-    if (fs.existsSync(path.join(d, "package-lock.json")) && path.basename(path.dirname(d)) !== "git_modules") return d
+    if (fs.existsSync(path.join(d, "package-lock.json"))) return d
     if (path.dirname(d) === d) throw new Error("no workspace found (no package-lock.json above " + from + ")")
   }
 }
