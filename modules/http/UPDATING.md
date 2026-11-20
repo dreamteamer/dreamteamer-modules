@@ -6,6 +6,12 @@ One section per release, newest first. Each says what a caller of `dt serve` has
 npm install --save-dev @dreamteamer/http@latest
 ```
 
+## 0.3.1
+
+Still **deprecated**. Depends on `@dreamteamer/protocol` 0.5, whose `GET /sources` answers `{ workspace, modules }`
+(no `layers`), whose records carry no `$duplicates`, and whose nav has no layer nodes. A caller that read those
+drops them; nothing else changes.
+
 ## 0.3.0
 
 Still **deprecated** — `dt serve` is `@dreamteamer/web`'s; see 0.2.2 below for the move. This release only ships

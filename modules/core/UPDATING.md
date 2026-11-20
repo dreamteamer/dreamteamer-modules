@@ -11,6 +11,13 @@ npx dreamteamer check
 
 ---
 
+## 0.14.1 — patch members for engine 0.51.0
+
+`tasks`, `meetings`, `recordings`, `workflows` and `sessions` move to their patch releases: their scripts find the
+workspace without the `git_modules/` exception the engine no longer needs. Nothing to do but the update above.
+
+---
+
 ## 0.14.0 — the members ship as their build
 
 Nothing to do but `npx dreamteamer update @dreamteamer/core`. The members whose code is TypeScript now ship as

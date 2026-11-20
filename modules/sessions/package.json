@@ -1,6 +1,6 @@
 {
 	"name": "@dreamteamer/sessions",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Sittings of work by a person or an agent — who, when, how long, what came out — saved from the transcript, analysed and bound to records.",
 	"license": "Apache-2.0",
 	"type": "module",

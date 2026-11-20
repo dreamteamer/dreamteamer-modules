@@ -10,6 +10,14 @@ npx dreamteamer check
 
 ---
 
+## 0.12.1 — no record layers
+
+With engine 0.51.0 every change request is the workspace's own, so the stage check judges every request and the
+stage migration reports no layer counts (its `--json` has no `layers` key). The skills drop rule (a): each stage
+writes `stage` on the request it moves. Nothing to do but the update above.
+
+---
+
 ## 0.12.0 — the code ships as its build
 
 Nothing to do but `npx dreamteamer update @dreamteamer/rnd`. The package's code is TypeScript now and ships as its build, `dist/`; no collection, field, record or command changes. Its bins (`dt-prototype` and the rest) are the same names, now under `dist/bin/`; call them by name or through

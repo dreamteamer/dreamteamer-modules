@@ -11,6 +11,13 @@ npx dreamteamer check
 
 ---
 
+## 0.2.1 — no git_modules layers
+
+A session record is written to the workspace the session runs in, found by its `package-lock.json` alone — the
+engine (0.51.0) has no `git_modules/` layers to step out of. Nothing to do.
+
+---
+
 ## 0.2.0 — the hook runs session-save by name
 
 The code ships as its build, so `bin/session-save.mjs` is gone: the script is `dist/bin/session-save.js`. A `Stop`
