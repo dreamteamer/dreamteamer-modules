@@ -24,13 +24,20 @@ describe("next notes list the sessions that bound a record", { skip }, () => {
     for (const a of [
       ["companies", "--name", "Northwind"],
       ["companies", "--name", "Harbor Mutual"],
-      ["tasks", "--name", "Send the Northwind quote"],
+      ["tasks", "--name", "Send the Northwind quote", "--id", "2026-01-05--send-the-northwind-quote"],
     ])
       assert.equal(dt(root, ["add", ...a]).code, 0)
     const before = fs.readFileSync(path.join(root, "data", "companies", "northwind.company.md"), "utf8")
-    const b = dt(root, ["session", "bind", "companies/northwind", "tasks/send-the-northwind-quote", "--session", SID])
+    const b = dt(root, [
+      "session",
+      "bind",
+      "companies/northwind",
+      "tasks/2026-01-05--send-the-northwind-quote",
+      "--session",
+      SID,
+    ])
     assert.equal(b.code, 0, b.err + b.out)
-    for (const ref of ["companies/northwind", "tasks/send-the-northwind-quote"]) {
+    for (const ref of ["companies/northwind", "tasks/2026-01-05--send-the-northwind-quote"]) {
       const notes = notesOf(root, ref)
       assert.equal(notes.length, 1, `${ref}: ${JSON.stringify(notes)}`)
       assert.ok(notes[0].text.includes(`sessions/${SID}`), notes[0].text)

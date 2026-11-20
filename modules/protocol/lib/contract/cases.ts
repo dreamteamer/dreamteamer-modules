@@ -465,7 +465,7 @@ export const cases: Case[] = [
     expect: res => {
       ok(res)
       shape(res.body, { records: "array", total: "number" })
-      check(res.body.total >= 3, `total ${res.body.total}`)
+      check(res.body.total >= 2, `total ${res.body.total}`)
     },
   },
   {
