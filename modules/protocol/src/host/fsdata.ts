@@ -178,7 +178,8 @@ export function loadDescriptors(root: string): Descriptor[] {
 export function collectionRoots(root: string, d: Descriptor): CollectionRoot[] {
   const s = acc().storageOf(d)
   const base = isRuntime(d) ? path.join(root, ".dreamteamer") : root
-  return s.roots.map((r: Record<string, any>) => ({
+  // engines from 0.50 have no record layers and no `roots`: the write root is the only one
+  return (s.roots ?? [{ path: s.path, repo: s.repo }]).map((r: Record<string, any>) => ({
     dir: path.resolve(base, r.path),
     repo: r.repo ?? s.repo ?? ".",
     ...(r.layer ? { layer: r.layer } : {}),
