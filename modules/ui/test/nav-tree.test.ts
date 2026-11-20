@@ -1,6 +1,6 @@
 // The nav's gestures as NavOps (lib/navTree.ts) — the expectations of the Vue ui's render-tier
 // test/webview/nav-sidebar-gestures.test.ts, over the same model, asked of the pure decision instead of a rendered
-// NavSidebar: a drop and a menu entry are ONE op built from the nodes' own targets; a layer means nothing.
+// NavSidebar: a drop and a menu entry are ONE op built from the nodes' own targets; a row that is not arranged means nothing.
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import {
@@ -51,12 +51,7 @@ const MODEL = (): NavNode[] => [
           },
         ],
       },
-      {
-        kind: "layers",
-        key: "layers/Layers",
-        label: "Layers",
-        children: [{ kind: "layer", key: "l/northwind-archive", label: "northwind-archive" }],
-      },
+      { kind: "message", key: "message", label: "a notice drawn below the rows" },
     ],
   },
 ]
@@ -71,7 +66,7 @@ test("the workspace node is the toolbar's name: its children are the top level",
   assert.equal(ix.workspace?.label, "northwind-hq")
   assert.deepEqual(
     ix.top.map(n => n.key),
-    ["c/tasks", "c/contacts", "c/companies", "n/ns%3Arnd", "layers/Layers"]
+    ["c/tasks", "c/contacts", "c/companies", "n/ns%3Arnd", "message"]
   )
 })
 
@@ -165,25 +160,25 @@ test("a drop on a view row — upper part or lower — is a drop after its colle
   assert.deepEqual(dropOp(ix, "c/tasks", "v/companies-map", "before", closed), after)
 })
 
-test("a drop on a layer row or the layers folder, on itself, or of a row with no target, is nothing", () => {
-  assert.equal(dropOp(ix, "c/tasks", "layers/Layers", "into", closed), null)
-  assert.equal(dropOp(ix, "c/tasks", "l/northwind-archive", "after", closed), null)
+test("a drop on a row that is not arranged, on itself, or of a row with no target, is nothing", () => {
+  assert.equal(dropOp(ix, "c/tasks", "message", "into", closed), null)
+  assert.equal(dropOp(ix, "c/tasks", "message", "after", closed), null)
   assert.equal(dropOp(ix, "c/tasks", "c/tasks", "after", closed), null)
   assert.equal(dropOp(ix, "v/companies-map", "c/tasks", "after", closed), null)
   assert.equal(dropOp(ix, null, "c/tasks", "after", closed), null)
 })
 
-test("the drop line: none over a layer, after its collection over a view row, else where the pointer is", () => {
-  assert.equal(hoverHint(ix, { key: "layers/Layers", where: "into" }), null)
+test("the drop line: none over a row that is not arranged, after its collection over a view row, else where the pointer is", () => {
+  assert.equal(hoverHint(ix, { key: "message", where: "into" }), null)
   assert.deepEqual(hoverHint(ix, { key: "v/companies-map", where: "before" }), { key: "c/companies", where: "after" })
   assert.deepEqual(hoverHint(ix, { key: "c/tasks", where: "before" }), { key: "c/tasks", where: "before" })
 })
 
-test("the empty area under the last row: the bottom of the top level, its line above the Layers folder", () => {
+test("the empty area under the last row: the bottom of the top level, its line above a row that is not arranged", () => {
   assert.deepEqual(tailOp(ix, "c/tasks"), { op: "move", target: { name: "tasks" }, position: "bottom" })
   assert.equal(tailOp(ix, "n/ns%3Arnd"), null, "already the last arranged top-level row")
-  assert.equal(tailOp(ix, "l/northwind-archive"), null)
-  assert.deepEqual(tailLine(ix), { key: "layers/Layers", where: "before" })
+  assert.equal(tailOp(ix, "message"), null)
+  assert.deepEqual(tailLine(ix), { key: "message", where: "before" })
   assert.deepEqual(tailLine(navIndex([col("tasks", "Tasks")])), { key: TAIL, where: "after" })
 })
 
@@ -224,7 +219,7 @@ test("which entries a row offers, and which are disabled at the ends of its leve
     "hide",
   ])
   assert.deepEqual(ids("f/ns%3Arnd/Product").slice(0, 3), ["new-folder", "rename", "dissolve"])
-  assert.equal(rowMenu(ix, "l/northwind-archive"), null)
+  assert.equal(rowMenu(ix, "message"), null)
   assert.equal(rowMenu(ix, "v/companies-map"), null)
 })
 

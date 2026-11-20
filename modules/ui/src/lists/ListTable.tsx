@@ -29,10 +29,9 @@ import { initialsOf } from "../lib/initialsOf.ts"
 import { askTitles, knownTitle, referenceTitlesChanged } from "../lib/recordCache.ts"
 import { appShell } from "../lib/appShell.ts"
 import { resolveRowSize } from "../lib/rowSize.ts"
-import { DUPLICATES_FIELD } from "../lib/sources.ts"
 import type { ListProps } from "../registry/props.ts"
 import { RenderView } from "../render/Render.tsx"
-import { cx, dupBadge, iconButton, linkButton } from "../styles/classes.ts"
+import { cx, iconButton, linkButton } from "../styles/classes.ts"
 
 // ---- the looks (was dt-table, dt-table-scroll, dt-density-*, dt-group-row, …) --------------------------------------
 // Every cell carries its own classes, the density's padding chosen here: a rule on the <table> for the cells would
@@ -75,13 +74,6 @@ const skeletonBar =
 const avatarCls = "inline-grid place-items-center w-12 h-12 rounded-full bg-bg-active text-fg-subtle font-semibold"
 
 const isEmpty = (v: unknown) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)
-
-/** An id more than one root holds: the first-named root's copy is the one read — said on the row. */
-function duplicateNote(record: Row): string {
-  const roots = record[DUPLICATES_FIELD]
-  if (!Array.isArray(roots) || roots.length < 2) return ""
-  return `held by both ${roots.join(" and ")} — ${roots[0]}'s copy is the one read; dreamteamer check names the files`
-}
 
 const columnStyle = (field: FieldRow) =>
   typeof field.width === "number" && field.width > 0 ? { minWidth: `${field.width}ch` } : undefined
@@ -253,7 +245,6 @@ export function ListTable({ state }: ListProps) {
               {!collapsed.has(band.value) &&
                 (band.records as Row[]).map(r => {
                   const tint = state.tintOf(r)
-                  const dup = duplicateNote(r)
                   return (
                     <tr
                       key={`${String(r["$source"] ?? "")}/${r.id}`}
@@ -302,11 +293,6 @@ export function ListTable({ state }: ListProps) {
                             </span>
                           ) : (
                             <RenderView field={f} value={r[f.field]} record={r} />
-                          )}
-                          {i === 0 && dup && (
-                            <span className={dupBadge} title={dup} role="img" aria-label="duplicate id">
-                              <Icon name="warning" />
-                            </span>
                           )}
                         </td>
                       ))}

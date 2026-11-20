@@ -109,7 +109,7 @@ export const getFolder = (collection: string, id: string, field: string) =>
 export const updateRecord = (collection: string, id: string, fields: Record<string, unknown>) =>
   request("PATCH", `/collections/${encName(collection)}/records/${encId(id)}`, fields) as Promise<{ id: string }>
 
-/** `target` names the root a new record is written to (a layer that takes writes); absent, the write root. */
+/** `target` names the root a new record is written to; only the write root takes one, and it is the default. */
 export const createRecord = (collection: string, fields: Record<string, unknown>, target?: string) =>
   request(
     "POST",

@@ -114,7 +114,7 @@ test("the README says what the bridge enforces and what a module app can still d
   const readme = fs.readFileSync(new URL("../README.md", import.meta.url), "utf8")
   const table = readme.slice(readme.indexOf("| **protects against**"), readme.indexOf("Found a hole?"))
   assert.doesNotMatch(table, /runs in the page with your session/)
-  assert.match(table, /a module's app — from an npm package or a workspace under `git_modules\/` — using your session/)
+  assert.match(table, /a module's app — from an npm package or the workspace's own `modules\/` — using your session/)
   assert.match(table, /grants nothing/)
   assert.match(table, /a peer connection \(WebRTC\)/)
   assert.match(readme, /\.vscode\/settings\.json` is a file git tracks/)

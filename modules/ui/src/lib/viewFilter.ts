@@ -52,10 +52,10 @@ export function seedFilter(baseFilter: unknown, urlFilter: string | null, forceO
 
 /**
  * What the builder should hold after the URL's `?filter=` changed underneath a mounted browse — a nav
- * row that differs only in its filter (each record layer's row), or back/forward. Null when there is
+ * row that differs only in its filter, or back/forward. Null when there is
  * nothing to do: the URL is the builder's own write echoing back, or re-seeding gives what it already
  * holds. The browse reads the URL once at setup and the page is not remounted for a query-only change,
- * so without this the second layer's row showed the first layer's records (operator 2026-10-29).
+ * so without this the second row showed the first row's records (operator 2026-10-29).
  */
 export function filterFromUrl(
   urlFilter: string | null,

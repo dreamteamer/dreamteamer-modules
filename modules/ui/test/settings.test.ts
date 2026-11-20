@@ -61,7 +61,7 @@ test("route builders take the base the page lives under", () => {
 test("modules: location and path from the manifest, `channel` as the old spelling; what each ships", () => {
   const records = [
     { id: "default", name: "default", title: "Default", collections: ["collections/notes", "collections/lab/samples"] },
-    { id: "northwind", name: "@northwind/core", namespaces: "nw", location: "git_modules" },
+    { id: "northwind", name: "@northwind/core", namespaces: "nw", location: "node_modules" },
   ]
   const info = {
     modules: [
@@ -76,7 +76,7 @@ test("modules: location and path from the manifest, `channel` as the old spellin
   assert.equal(b!.title, "northwind")
   assert.equal(b!.location, "npm")
   assert.deepEqual(b!.namespaces, ["nw"])
-  assert.equal(moduleEntries(records, null)[1]!.location, "git_modules")
+  assert.equal(moduleEntries(records, null)[1]!.location, "node_modules")
 })
 
 test("the remote mark warns only when a push would be refused for sure", () => {

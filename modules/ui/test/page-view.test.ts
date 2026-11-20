@@ -144,7 +144,7 @@ test("a module's page is the PAGE view whose options.module names it — the low
   assert.equal(modulePageView([activity("helpdesk-activity")], "helpdesk"), undefined, "an activity view is not a page")
 })
 
-test("a layer scope narrows a child's own filter by $source, and leaves an unscoped one alone", () => {
+test("a source scope narrows a child's own filter by $source, and leaves an unscoped one alone", () => {
   assert.equal(scopedFilter(undefined, undefined), undefined)
   assert.deepEqual(scopedFilter({ tags: { _eq: "urgent" } }, undefined), { tags: { _eq: "urgent" } })
   assert.deepEqual(scopedFilter(undefined, "project-a"), { $source: { _eq: "project-a" } })
@@ -201,13 +201,7 @@ test("a count links to the RECORDS behind it: the collection's list, the view's 
 test("a module's page: the workspace's own page view wins over a package's, whatever its id — and says which it is", () => {
   const shipped = { ...page("modules-rnd", { module: "rnd" }), $module: "rnd", "$source-kind": "module" }
   const own = { ...page("rnd-dashboard", { module: "rnd" }), $module: "default", "$source-kind": "own" }
-  const layer = { ...page("a-layer-page", { module: "rnd" }), $module: "project-a", "$source-kind": "layer" }
-  assert.equal(
-    modulePageView([shipped, own, layer], "rnd")?.id,
-    "rnd-dashboard",
-    "own beats layer beats package, before the id"
-  )
-  assert.equal(modulePageView([shipped, layer], "rnd")?.id, "a-layer-page")
+  assert.equal(modulePageView([shipped, own], "rnd")?.id, "rnd-dashboard", "own beats package, before the id")
   assert.equal(modulePageView([shipped], "rnd")?.id, "modules-rnd")
   assert.equal(pageOrigin(own), "ui-view rnd-dashboard · from default")
   assert.equal(pageOrigin(page("p", {})), "ui-view p", "a view with no module stamp: the id alone")

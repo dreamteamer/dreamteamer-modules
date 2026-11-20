@@ -16,7 +16,7 @@ export function changeScope(root: string, file: string): ChangeScope {
   return rel.slice(1).some(isDotEntry) ? "data" : "schema"
 }
 const RUNTIME_DIR = ".dreamteamer"
-export const RECORD_WATCH_GLOB = "{data,state,.dreamteamer,git_modules,modules}/**"
+export const RECORD_WATCH_GLOB = "{data,state,.dreamteamer,modules}/**"
 const ALWAYS_WATCHED = new Set(["data", "state", RUNTIME_DIR])
 export const NAV_DOC_FILE = "nav.yaml"
 export function isWatchedChange(root: string, file: string, underRecordRoot: (file: string) => boolean): boolean {

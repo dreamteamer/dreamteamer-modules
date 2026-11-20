@@ -1,15 +1,13 @@
 // Ported from the dreamteamer VS Code extension's host side (src/sources.ts); PROTOCOL.md is the contract it answers.
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { execFileSync } from "node:child_process"
-import { GIT_SYNC } from "./gitExec.ts"
 import { engine } from "./engine.ts"
 import { collectionRoots, listRecords, loadModules, walkIds, workspaceName } from "./fsdata.ts"
 
 import type { CollectionRoot, Descriptor, ModuleRecord } from "./fsdata.ts"
 
-export type SourceKind = "own" | "layer" | "module"
-export type SourceVia = "own" | "clone" | "layer" | "package"
+export type SourceKind = "own" | "module"
+export type SourceVia = "own" | "clone" | "package"
 export type SourceAccess = "write" | "edit" | "read"
 export interface SourceEntry {
   name: string
@@ -18,7 +16,6 @@ export interface SourceEntry {
   path: string
   installed: boolean
   count: number
-  record?: string
   via: SourceVia
   access: SourceAccess
   note?: string
@@ -27,98 +24,16 @@ export interface SourcesContext {
   root?: string
   workspace: string
   modules: ModuleRecord[]
-  gitModules: Record<
-    string,
-    {
-      url?: string
-      records?: string[]
-      module?: boolean
-    }
-  >
-  layers: Set<string>
-  repos: Array<{
-    id: string
-    url: string
-  }>
-  origins: Map<string, string | undefined>
 }
 export interface SourceStackEntry extends Omit<SourceEntry, "count" | "path"> {
-  url?: string
   collections: Array<{
     collection: string
     path: string
     count: number
   }>
 }
-export function sourcesContext(root: string, iterable: Iterable<Descriptor>): SourcesContext {
-  const descriptors = [...iterable]
-  let gitModules = {}
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"))
-    const raw = pkg?.dreamteamer?.git_modules
-    if (raw && typeof raw === "object") gitModules = raw
-  } catch {}
-  const repos = []
-  for (const d of descriptors) {
-    if (d.name !== "repos") continue
-    for (const r of collectionRoots(root, d)) {
-      for (const [id, file] of walkIds(r.dir, d)) {
-        try {
-          const fields = engine().parseRecordText(fs.readFileSync(file, "utf8"), d)
-          if (typeof fields.url === "string" && fields.url) repos.push({ id, url: fields.url })
-        } catch {}
-      }
-    }
-  }
-  const origins = new Map()
-  for (const name of Object.keys(gitModules)) {
-    const repo = path.posix.join("git_modules", name)
-    const dir = path.join(root, repo)
-    if (!fs.existsSync(path.join(dir, ".git"))) continue
-    try {
-      origins.set(
-        repo,
-        execFileSync("git", ["remote", "get-url", "origin"], { cwd: dir, ...GIT_SYNC })
-          .toString()
-          .trim() || undefined
-      )
-    } catch {
-      origins.set(repo, undefined)
-    }
-  }
-  return {
-    root,
-    workspace: workspaceName(root),
-    modules: loadModules(root),
-    gitModules,
-    repos,
-    origins,
-    layers: layerKeys(gitModules, descriptors),
-  }
-}
-export function layerKeys(gitModules: SourcesContext["gitModules"], descriptors: Iterable<Descriptor>): Set<string> {
-  const out = new Set<string>()
-  for (const [name, entry] of Object.entries<any>(gitModules)) if (entry && entry.records !== undefined) out.add(name)
-  for (const d of descriptors)
-    for (const l of engine().descriptor.storageOf(d).layers ?? []) if (l.name in gitModules) out.add(l.name)
-  return out
-}
-export function sameRemote(a: string | undefined, b: string | undefined): boolean {
-  if (!a || !b) return false
-  const norm = (u: string) =>
-    u
-      .trim()
-      .toLowerCase()
-      .replace(/\/+$/, "")
-      .replace(/\.git$/, "")
-  return norm(a) === norm(b)
-}
-export function repoRecordFor(remotes: Array<string | undefined>, repos: SourcesContext["repos"]): string | undefined {
-  for (const remote of remotes) {
-    const hit = repos.find(r => sameRemote(remote, r.url))
-    if (hit) return `repos/${hit.id}`
-  }
-  return undefined
+export function sourcesContext(root: string): SourcesContext {
+  return { root, workspace: workspaceName(root), modules: loadModules(root) }
 }
 function owningModule(
   root: string,
@@ -131,7 +46,6 @@ function owningModule(
   const mod = ctx.modules.find(m => m.id === id)
   const rel = path.relative(root, write.dir).split(path.sep).join("/")
   if (mod?.path && mod.path !== "." && (rel === mod.path || rel.startsWith(mod.path + "/"))) return mod
-  if (!mod?.path && write.repo !== ".") return mod ?? { id, name: id }
   return undefined
 }
 export function collectionSources(root: string, d: Descriptor, ctx: SourcesContext): SourceEntry[] {
@@ -139,24 +53,8 @@ export function collectionSources(root: string, d: Descriptor, ctx: SourcesConte
   const counts = countsByRoot(root, d, roots)
   return roots.map((r, i): SourceEntry => {
     const rel = path.relative(root, r.dir).split(path.sep).join("/")
-    if (r.layer) {
-      const declared = ctx.gitModules[r.layer]?.url
-      const installed = fs.existsSync(path.join(root, r.repo))
-      return {
-        name: r.layer,
-        kind: "layer",
-        repo: r.repo,
-        path: rel,
-        installed,
-        count: counts[i] ?? 0,
-        ...withRecord(repoRecordFor([declared, ctx.origins.get(r.repo)], ctx.repos)),
-        ...layerAccess(root, r.layer, r.repo, d.name, installed),
-      }
-    }
     const mod = owningModule(root, d, r, ctx)
-    if (mod) {
-      const key = mod.path?.startsWith("git_modules/") ? mod.path.slice("git_modules/".length) : undefined
-      const declared = key ? ctx.gitModules[key]?.url : undefined
+    if (mod)
       return {
         name: mod.id,
         kind: "module",
@@ -164,10 +62,8 @@ export function collectionSources(root: string, d: Descriptor, ctx: SourcesConte
         path: rel,
         installed: fs.existsSync(r.dir) || r.repo === ".",
         count: counts[i] ?? 0,
-        ...withRecord(repoRecordFor([declared, ctx.origins.get(r.repo)], ctx.repos)),
         ...moduleFolderAccess(mod.id, mod.path ?? rel, root),
       }
-    }
     return {
       name: ctx.workspace,
       kind: "own",
@@ -202,56 +98,19 @@ function moduleFolderAccess(
       }
     : { via: "clone", access: "write" }
 }
-export function layerAccess(
-  root: string,
-  layer: string,
-  repo: string,
-  collection: string | undefined,
-  installed: boolean
-): Pick<SourceEntry, "via" | "access" | "note"> {
-  if (!installed)
-    return {
-      via: "layer",
-      access: "read",
-      note: `${layer} is declared but not installed — run \`dreamteamer install\`; nothing is read from it`,
-    }
-  if (layerCompiles(root, repo, collection)) return { via: "layer", access: "write" }
-  return {
-    via: "layer",
-    access: "edit",
-    note: `${layer} has no compiled ${collection ?? "runtime"} — its records are edited in place, and a new one is added there once \`dt compile -w ${layer}\` has run`,
-  }
-}
-export function layerCompiles(root: string, repo: string, collection: string | undefined): boolean {
-  const runtime = path.join(root, repo, ".dreamteamer")
-  return fs.existsSync(
-    collection === undefined
-      ? path.join(runtime, "manifest.yaml")
-      : path.join(runtime, "collections", `${collection}.collection.yaml`)
-  )
-}
 export function moduleSource(
   mod: Pick<ModuleRecord, "id" | "path"> | undefined,
   ctx: SourcesContext
 ): Omit<SourceEntry, "count"> {
   const p = mod?.path?.replace(/\/+$/, "") ?? ""
-  const parts = p.split("/")
-  const clone = parts[0] === "git_modules" && parts[1] ? parts[1] : undefined
-  if (!mod || (!clone && !parts.includes("node_modules")))
+  if (!mod || !p.split("/").includes("node_modules"))
     return { name: ctx.workspace, kind: "own", repo: ".", path: p || ".", installed: true, via: "own", access: "write" }
-  const repo = clone ? `git_modules/${clone}` : "."
-  const record = withRecord(
-    repoRecordFor([clone ? ctx.gitModules[clone]?.url : undefined, ctx.origins.get(repo)], ctx.repos)
-  )
-  if (clone && ctx.layers.has(clone))
-    return { name: clone, kind: "layer", repo, path: p, installed: true, ...record, via: "layer", access: "write" }
   return {
     name: mod.id,
     kind: "module",
-    repo,
+    repo: ".",
     path: p,
     installed: true,
-    ...record,
     ...moduleFolderAccess(mod.id, p, ctx.root),
   }
 }
@@ -262,11 +121,8 @@ export function runtimeSources(modules: Iterable<string | undefined>, ctx: Sourc
     const entry = byName.get(s.name) ?? byName.set(s.name, { ...s, count: 0 }).get(s.name)
     entry.count++
   }
-  const rank: Record<SourceKind, number> = { own: 0, layer: 1, module: 2 }
+  const rank: Record<SourceKind, number> = { own: 0, module: 1 }
   return [...byName.values()].sort((a, b) => rank[a.kind] - rank[b.kind] || a.name.localeCompare(b.name))
-}
-function withRecord(record: string | undefined): { record?: string } {
-  return record ? { record } : {}
 }
 function countsByRoot(root: string, d: Descriptor, roots: CollectionRoot[]): number[] {
   if (engine().descriptor.storageOf(d).under?.collection) return [listRecords(root, d).length]
@@ -305,10 +161,7 @@ export function describeSources(sources: SourceEntry[]): {
   const absent = foreign.filter(s => !s.installed)
   const parts = []
   if (holding.length === 1) parts.push(`from ${holding[0].name}`)
-  else if (holding.length > 1) {
-    const kinds = new Set(holding.map(s => s.kind))
-    parts.push(`from ${holding.length} ${kinds.size === 1 && kinds.has("layer") ? "layers" : "sources"}`)
-  }
+  else if (holding.length > 1) parts.push(`from ${holding.length} sources`)
   for (const s of absent) parts.push(`${s.name} not installed`)
   const detail = sources.map(s =>
     s.installed
@@ -339,7 +192,6 @@ export function sourcesStack(
   ctx: SourcesContext
 ): {
   workspace: SourceStackEntry
-  layers: SourceStackEntry[]
   modules: SourceStackEntry[]
 } {
   const workspace: SourceStackEntry = {
@@ -351,94 +203,22 @@ export function sourcesStack(
     access: "write",
     collections: [],
   }
-  const layers = new Map<string, SourceStackEntry>()
   const modules = new Map<string, SourceStackEntry>()
-  for (const [name, entry] of Object.entries<any>(ctx.gitModules)) {
-    if (!entry || !ctx.layers.has(name)) continue
-    const repo = path.posix.join("git_modules", name)
-    const installed = fs.existsSync(path.join(root, repo))
-    layers.set(name, {
-      name,
-      kind: "layer",
-      repo,
-      installed,
-      ...layerAccess(root, name, repo, undefined, installed),
-      ...(declaredUrl(ctx, name) ? { url: declaredUrl(ctx, name) } : {}),
-      ...withRecord(repoRecordFor([entry.url, ctx.origins.get(repo)], ctx.repos)),
-      collections: [],
-    })
-  }
   for (const d of descriptors) {
     if (engine().descriptor.isRuntime(d)) continue
     for (const s of collectionSources(root, d, ctx)) {
       const row = { collection: d.name, path: s.path, count: s.count }
       if (s.kind === "own") workspace.collections.push(row)
-      else if (s.kind === "layer") {
-        const l = layers.get(s.name) ?? (layers.set(s.name, { ...stripCount(s), collections: [] }), layers.get(s.name))
-        l.collections.push(row)
-      } else {
-        const key = s.repo.startsWith("git_modules/") ? s.repo.slice("git_modules/".length) : undefined
-        const url = declaredUrl(ctx, key)
+      else {
         const m =
-          modules.get(s.name) ??
-          (modules.set(s.name, { ...stripCount(s), ...(url ? { url } : {}), collections: [] }), modules.get(s.name))
+          modules.get(s.name) ?? (modules.set(s.name, { ...stripCount(s), collections: [] }), modules.get(s.name))
         m.collections.push(row)
       }
     }
   }
-  return { workspace, layers: [...layers.values()], modules: [...modules.values()] }
+  return { workspace, modules: [...modules.values()] }
 }
 function stripCount(s: SourceEntry): Omit<SourceEntry, "count" | "path"> {
   const { count: _c, path: _p, ...rest } = s
   return rest
-}
-export function layerTitle(root: string, key: string): string | undefined {
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(root, "git_modules", key, "package.json"), "utf8"))
-    const title = pkg?.dreamteamer?.title ?? pkg?.title
-    return typeof title === "string" && title.trim() ? title.trim() : undefined
-  } catch {
-    return undefined
-  }
-}
-/**
- * A url with its USERINFO removed (cr-vscode-012, held-out h5 and h7, and the line "a
- * scp-like user@host:path remote never shows its login") — what the host may SEND. A `scheme://` url
- * of ANY scheme loses everything between `//` and the last `@` of its authority (a token pasted as
- * `https://<token>@host/…`, and an `ssh://` login, alike); the scheme, host, port and path are kept as
- * written. A url `new URL` refuses (a raw `/` in a password) is cut at its LAST `@`, so a secret is
- * never left behind by a parse that gave up. An scp-like `user@host:path` becomes `host:path`, split at
- * the LAST `@` before the first `:` as ssh splits it; a local path (a `/` before that `:`), a drive path
- * and a login-free `host:path` are returned unchanged. Matching a remote (`repoRecordFor`) still reads
- * the raw url: that is local and never sent.
- */
-export function withoutUserinfo(url: string | undefined): string | undefined {
-  if (typeof url !== "string") return url
-  const m = /^([a-z][a-z0-9+.-]*:\/\/)(.*)$/is.exec(url)
-  if (!m) {
-    // scp-like: `user@host:path` — the part before the first `:` names the login and host, unless it
-    // holds a `/` (then it is a local path, as git reads it)
-    const colon = url.indexOf(":")
-    if (colon === -1) return url
-    const head = url.slice(0, colon)
-    const at = head.lastIndexOf("@")
-    if (at === -1 || head.includes("/") || url.startsWith("//", colon + 1)) return url
-    return url.slice(at + 1)
-  }
-  const [, scheme, rest] = m
-  let at
-  try {
-    new URL(url)
-    const end = rest.search(/[/?#]/)
-    at = (end === -1 ? rest : rest.slice(0, end)).lastIndexOf("@")
-  } catch {
-    at = rest.lastIndexOf("@")
-  }
-  if (at === -1) return url
-  return `${scheme}${rest.slice(at + 1)}`
-}
-/** The declared `git_modules` url of a key, as the host may send it — the ONE reader `sourcesStack` uses
- *  for a layer's and a module bundle's `url`, so neither site can send userinfo. */
-export function declaredUrl(ctx: Pick<SourcesContext, "gitModules">, key: string | undefined): string | undefined {
-  return key ? withoutUserinfo(ctx.gitModules[key]?.url) || undefined : undefined
 }

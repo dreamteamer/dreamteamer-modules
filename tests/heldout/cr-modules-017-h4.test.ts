@@ -1,7 +1,7 @@
 // HELD-OUT cr-modules-017-h4 (rnd/tests dreamteamer-modules/heldout-m017-m-selection-and-queue-edges), written by the
-// test stage from the record alone: 50 refs with one record deleted before the put, a place on a record from a
-// git_modules layer, a queued command whose record stops being eligible, two prompts within one second, a queue of
-// 25, and dt web select across two collections. The server is started the way a session starts it (the dt-web bin,
+// test stage from the record alone: 50 refs with one record deleted before the put, a queued command whose record
+// stops being eligible, two prompts within one second, a queue of 25, and dt web select across two collections.
+// (Step 2, a place on a record from a git_modules layer, went with record layers.) The server is started the way a session starts it (the dt-web bin,
 // detached), so the prompt hook finds it through its runtime file.
 import { test, describe, before, after } from "node:test"
 import assert from "node:assert/strict"
@@ -78,22 +78,6 @@ describe("step 1: 50 refs, one deleted on disk before the put", () => {
       { view: after.view, refs: after.refs, place: after.place },
       { view: before.view, refs: before.refs, place: before.place }
     )
-  })
-})
-
-describe("step 2: a place on a record from a git_modules layer", () => {
-  test("200; place is 'projects/harbor-mutual-archive'; the hook line names the ref", async () => {
-    const ref = "projects/harbor-mutual-archive"
-    const r = await page(base, cookie, "PUT", "/api/selection", {
-      view: { collection: "projects", id: "harbor-mutual-archive" },
-      refs: [ref],
-    })
-    assert.equal(r.status, 200, r.text)
-    assert.equal(r.json.place, ref)
-    const h = await hook(payload(f.root), m.env)
-    assert.equal(h.code, 0, h.stderr)
-    assert.match(h.stdout, /showing: projects\/harbor-mutual-archive/, h.stdout)
-    assert.match(h.stdout, /selected: projects\/harbor-mutual-archive/, h.stdout)
   })
 })
 

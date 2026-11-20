@@ -20,15 +20,13 @@ const SETTINGS =
   '{\n\t// arranged before nav.yaml\n\t"dreamteamer.navOrder": ["tasks", "lab"],\n\t"dreamteamer.navHidden": ["projects"],\n}\n'
 
 const comparable = nodes =>
-  nodes
-    .filter(n => n.kind !== "layers")
-    .map(n => ({
-      kind: n.kind,
-      key: n.key,
-      label: n.label,
-      icon: n.icon,
-      ...(n.children ? { children: comparable(n.children) } : {}),
-    }))
+  nodes.map(n => ({
+    kind: n.kind,
+    key: n.key,
+    label: n.label,
+    icon: n.icon,
+    ...(n.children ? { children: comparable(n.children) } : {}),
+  }))
 
 const servers = []
 const fixtures = []

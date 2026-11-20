@@ -1,5 +1,5 @@
 // THE CONTRACT — one case per behaviour a host owes, each naming the ROUTES entry it exercises.
-// Run in order on one fixture (fixture.js): reads, record writes, the layer, dry runs, field writes,
+// Run in order on one fixture (fixture.js): reads, record writes, dry runs, field writes,
 // system writes. Each `expect` asserts status and SHAPE; values only where the fixture fixes them.
 // A dry-run case asserts nothing was written: the workspace's HEAD and `git status` are unchanged.
 import fs from "node:fs"
@@ -57,8 +57,6 @@ const schemaOf = async ({ request }: ContractContext, name: string) => {
   return res.body.find((d: any) => d.name === name)
 }
 const ok = (res: HostResponse) => status(res, 200)
-const layerFile = ({ fixture }: ContractContext) =>
-  path.join(fixture.layer, "data", "projects", "harbor-mutual-archive.project.md")
 
 export const cases: Case[] = [
   // ---- reads ---------------------------------------------------------------------------------
@@ -93,10 +91,7 @@ export const cases: Case[] = [
       shape(res.body, { collections: "array" })
       const row = res.body.collections.find((r: any) => r.collection === "projects")
       check(row, "no projects row")
-      check(
-        Array.isArray(row.sources) && row.sources.length >= 2,
-        "the projects row carries no sources (own + the layer)"
-      )
+      check(Array.isArray(row.sources) && row.sources.length >= 1, "the projects row carries no sources")
       shape(row.sources[0], { name: "string", kind: "string", count: "number" }, "sources[0]")
     },
   },
@@ -107,10 +102,10 @@ export const cases: Case[] = [
     path: "/sources",
     expect: res => {
       ok(res)
-      shape(res.body, { workspace: "object", layers: "array", modules: "array" })
+      shape(res.body, { workspace: "object", modules: "array" })
       check(
-        res.body.layers.some((l: any) => l.name === "northwind-archive"),
-        "the layer is not in the stack"
+        res.body.workspace.collections.some((c: any) => c.collection === "projects"),
+        "the workspace's own collections are not in the stack"
       )
     },
   },
@@ -125,16 +120,16 @@ export const cases: Case[] = [
     expect: res => {
       ok(res)
       shape(res.body, { available: "boolean", access: "object" })
-      const layer = res.body.access["northwind-archive"]
-      check(layer && typeof layer.state === "string", "the layer has no access entry")
-      check(res.body.available || layer.state === "not-checked", "no provider, yet a source was checked")
+      const own = res.body.access.lab
+      check(own && typeof own.state === "string", "the workspace has no access entry")
+      check(res.body.available || own.state === "not-checked", "no provider, yet a source was checked")
     },
   },
   {
     id: "sources-access-members",
     route: "sources-access-members",
     method: "GET",
-    path: "/sources/access/members?source=northwind-archive",
+    path: "/sources/access/members?source=lab",
     expect: res => {
       ok(res)
       shape(res.body, { state: "string", members: "array" })
@@ -224,10 +219,9 @@ export const cases: Case[] = [
       ok(res)
       shape(res.body, { records: "array", total: "number" })
       const ids = res.body.records.map((r: any) => r.id)
-      for (const id of ["northwind-launch", "harbor-mutual-renewal", "harbor-mutual-archive"])
-        check(ids.includes(id), `no row ${id} (the layer's record included)`)
-      const layer = res.body.records.find((r: any) => r.id === "harbor-mutual-archive")
-      shape(layer, { $source: "string", "last-modified": "string|null" }, "the layer row")
+      for (const id of ["northwind-launch", "harbor-mutual-renewal"]) check(ids.includes(id), `no row ${id}`)
+      const row = res.body.records.find((r: any) => r.id === "northwind-launch")
+      shape(row, { $source: "string", "last-modified": "string|null" }, "the northwind-launch row")
       check(!("notes" in res.body.records[0]), "the body field came back without with-body=true")
     },
   },
@@ -583,32 +577,6 @@ export const cases: Case[] = [
     expect: (res, ctx, snap) => {
       status(res, 400)
       unchanged(ctx, snap)
-    },
-  },
-  {
-    id: "record-update-layer",
-    route: "record-update",
-    method: "PATCH",
-    path: "/collections/projects/records/harbor-mutual-archive",
-    body: { status: "active" },
-    expect: (res, ctx) => {
-      ok(res)
-      check(
-        /status: active/.test(fs.readFileSync(layerFile(ctx), "utf8")),
-        "the edit did not land in the layer's clone"
-      )
-    },
-  },
-  {
-    id: "rename-layer-refused",
-    route: "rename",
-    method: "POST",
-    path: "/collections/projects/rename",
-    body: { old: "harbor-mutual-archive", new: "harbor-mutual-history" },
-    expect: (res, ctx) => {
-      status(res, 400)
-      check(/held by layer/.test(res.body.error), `refusal does not name the layer: ${res.body.error}`)
-      check(fs.existsSync(layerFile(ctx)), "the layer record moved")
     },
   },
   {

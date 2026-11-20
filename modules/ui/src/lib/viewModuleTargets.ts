@@ -2,9 +2,7 @@
  * WHERE A NEW VIEW CAN LAND — the module choice of Save as… and of a ui-view's record page, as data.
  *
  * The workspace module is the default (it is the engine's own default for a write with no `?module=`).
- * Every module whose sources are in this workspace is a choice: an inline `modules/*` module, and a
- * linked clone's (`git_modules/<clone>/modules/*`), which is how a view authored here reaches a module's
- * own repo. A module `npm install` put in `node_modules/` is never a choice — a write there is erased
+ * Every module whose sources are in this workspace is a choice: an inline `modules/*` module. A module `npm install` put in `node_modules/` is never a choice — a write there is erased
  * by the next install — and the form says so ONCE (`lockedNote`), with their names on hover, the same
  * judgement as the native picker (`lib/isUnwritableModule.ts`): a picker that hides them in silence
  * answers "there is no such module", which is worse than one sentence saying why.
@@ -32,8 +30,6 @@ export interface ViewModuleTarget {
   name: string
   /** Workspace-relative root of its sources; '' when unknown. */
   path: string
-  /** Its sources are a linked clone's (`git_modules/`). */
-  linked: boolean
   /** The workspace module's row. */
   workspace: boolean
 }
@@ -49,17 +45,14 @@ export function viewModuleTargets(
     .filter(m => m.id !== workspaceModule)
     .map((m): ViewModuleTarget => {
       const locked = isUnwritableModule(m)
-      const linked = m.location === "git_modules"
-      const where = linked ? `linked · ${m.path}` : m.path
       return {
         id: m.id,
         label: m.title || m.id,
-        hint: [m.id !== (m.title || m.id) ? m.id : "", where].filter(Boolean).join(" · "),
+        hint: [m.id !== (m.title || m.id) ? m.id : "", m.path].filter(Boolean).join(" · "),
         locked,
         ...(locked ? { reason: LOCKED_REASON } : {}),
         name: m.id,
         path: m.path ?? "",
-        linked,
         workspace: false,
       }
     })
@@ -72,7 +65,6 @@ export function viewModuleTargets(
     locked: false,
     name: own?.id ?? "",
     path: own?.path ?? "",
-    linked: own?.location === "git_modules",
     workspace: true,
   }
   return [workspace, ...rows]
@@ -92,19 +84,19 @@ export function recordPageTargets(targets: ViewModuleTarget[], workspaceModule: 
 }
 
 /**
- * Where a module's sources live, in one line: `<id> · linked · <path>`. The workspace row names the
+ * Where a module's sources live, in one line: `<id> · <path>`. The workspace row names the
  * workspace module (its `id` is the no-selector `null`); a workspace with none declared reads
  * `the default`, so the line under the control is never blank.
  */
 export function whereOf(t: ViewModuleTarget): string {
-  return [t.name, t.linked ? "linked" : "", t.path].filter(Boolean).join(" · ") || "the default"
+  return [t.name, t.path].filter(Boolean).join(" · ") || "the default"
 }
 
 /**
  * The dropdown's choices, in the targets' order, and the npm-installed modules split out. A choice's
  * hint is keyed on the row's FLAGS, never on its label text: the Save as… workspace row (`id` null,
  * label `Workspace module`) is hinted with the module's id; the record page's (its label already
- * names the module) is not; a linked module reads `linked`; an inline one nothing.
+ * names the module) is not; any other module nothing.
  */
 export function moduleChoices(targets: ViewModuleTarget[]): { choices: Choice[]; locked: ViewModuleTarget[] } {
   const choices: Choice[] = []
@@ -114,7 +106,7 @@ export function moduleChoices(targets: ViewModuleTarget[]): { choices: Choice[];
       locked.push(t)
       continue
     }
-    const hint = t.workspace ? (t.id === null && t.name ? t.name : undefined) : t.linked ? "linked" : undefined
+    const hint = t.workspace && t.id === null && t.name ? t.name : undefined
     choices.push({ value: t.id, text: t.label, title: whereOf(t), ...(hint ? { hint } : {}) })
   }
   return { choices, locked }

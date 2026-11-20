@@ -1,11 +1,10 @@
 /**
- * THE SOURCE PICKER — beside the filter button, on a collection that reads anything shared (a layer, a
+ * THE SOURCE PICKER — beside the filter button, on a collection that reads anything shared (a
  * module-owned list): closed it shows the selection — All sources, the one source picked, or the dots of several;
  * open it lists every source with the records each holds and whether a write lands there (ported from
  * the Vue ui's browse/SourcePicker.vue).
  *
- * It writes the ORDINARY filter — one `$source` rule (`lib/sources.ts`), the same one a layer's nav row opens
- * with — so Save, the URL and the chips all see it, and nothing narrows the rows outside the filter. Counts are the
+ * It writes the ORDINARY filter — one `$source` rule (`lib/sources.ts`) — so Save, the URL and the chips all see it, and nothing narrows the rows outside the filter. Counts are the
  * host's, over the rows the other rules leave. A source not installed is listed greyed, with nothing to pick.
  */
 import type { Dispatch, SetStateAction } from "react"
@@ -31,7 +30,7 @@ import {
 } from "../styles/classes.ts"
 import { sourceDot } from "./looks.ts"
 
-/** A row's class and writability in words: `record layer · writes`, `installed package · read-only`. */
+/** A row's class and writability in words: `linked clone · writes`, `installed package · read-only`. */
 function pickerWords(f: SourceEntry): string {
   const access =
     f.access === "write" ? "writes" : f.access === "edit" ? "edits only" : f.access === "read" ? "read-only" : ""

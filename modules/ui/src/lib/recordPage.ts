@@ -5,7 +5,6 @@
  * (pages/ContentDetail.vue, components/PageHeader.vue, ItemProperties.vue, composables/items.ts); the delete
  * force, the rename and Mod-S are ui's own, over the routes PROTOCOL.md names.
  */
-import { DUPLICATES_FIELD } from "./sources.ts"
 import { listRoute } from "./createRoute.ts"
 
 export interface Crumb {
@@ -76,13 +75,6 @@ export function renameProblem(from: string, to: string): string | null {
   if (next.split("/").some(s => s === "" || s === "." || s === "..")) return "An id's segments are names, not . or ..."
   if (/\s/.test(next)) return "An id holds no spaces."
   return null
-}
-
-/** The roots holding this id besides the one read (`$duplicates`, first root wins) — the header badge's
- *  answer; null when the id is held once. */
-export function duplicatesOf(record: Record<string, unknown> | null | undefined): string[] | null {
-  const roots = record?.[DUPLICATES_FIELD]
-  return Array.isArray(roots) && roots.length > 1 ? roots.map(String) : null
 }
 
 /** "Nothing here yet": null, undefined, the empty string and the empty list. `false` and `0` are values. */

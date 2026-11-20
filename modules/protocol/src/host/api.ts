@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process"
 import { GIT_SYNC } from "./gitExec.ts"
 import { engine, refreshWorkspace } from "./engine.ts"
 import { listFolderImages } from "./listFolderImages.ts"
-import { contestedIds, fileToRecord, loadDescriptors, loadModules, repoOfPath, workspaceModule } from "./fsdata.ts"
+import { fileToRecord, loadDescriptors, loadModules, repoOfPath, workspaceModule } from "./fsdata.ts"
 import { loadRuntimeModules, moduleOfRuntimeFile } from "./moduleOf.ts"
 import {
   ACTIVITY_BUDGET_MS,
@@ -28,7 +28,6 @@ import {
   sourcesStack,
   withoutSourceClauses,
 } from "./sources.ts"
-import { createInLayer } from "./createInLayer.ts"
 import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "./remoteAccess.ts"
 import { byId, notesFor } from "./nextNotes.ts"
 import { recordDirsOrNone, unreadableReason } from "./recordDirs.ts"
@@ -157,7 +156,7 @@ export class WorkspaceApi {
   }
   private sourcesCache: SourcesContext | null = null
   private sourcesCtx() {
-    return (this.sourcesCache ??= sourcesContext(this.root, this.store.descriptors.values()))
+    return (this.sourcesCache ??= sourcesContext(this.root))
   }
   private runtimeModuleOf(file: string) {
     return moduleOfRuntimeFile(
@@ -171,9 +170,6 @@ export class WorkspaceApi {
       [...this.store.readAll(d.name)].map(({ file }: { file: string }) => this.runtimeModuleOf(file)),
       this.sourcesCtx()
     )
-  }
-  private contested(d: Descriptor) {
-    return contestedIds(this.root, d)
   }
   private sourceOfFile(d: Descriptor, file: string, sources: SourceEntry[]) {
     if (!engine().descriptor.isRuntime(d)) return sourceOfFile(this.root, d, file, sources)
@@ -288,8 +284,7 @@ export class WorkspaceApi {
       const targets = accessTargets(
         sourcesStack(this.root, [...store.descriptors.values()], ctx),
         this.root,
-        ctx.modules,
-        ctx.gitModules
+        ctx.modules
       )
       const ra = this.remoteAccess
       if (seg.length === 2) {
@@ -489,8 +484,6 @@ export class WorkspaceApi {
     const descriptors = [...store.descriptors.values()]
     const history = gitHistoryMap(this.root, store.recordDirs(d), dir => repoOfPath(this.root, descriptors, dir))
     const sources = this.sourcesOf(d)
-    const contested = this.contested(d)
-    const dupes = contested.duplicates
     const runtime = eng.descriptor.isRuntime(d)
     const mods = this.runtimeModules()
     const moduleOfRow = (file: string, source: SourceEntry | undefined) => {
@@ -506,7 +499,6 @@ export class WorkspaceApi {
     let rows = []
     for (const { id, file, fields } of store.readAll(name)) {
       const created = fields.created === undefined ? store.createdOf(name, id, fields, file) : undefined
-      const dupe = dupes.get(id)
       rows.push({
         ...fields,
         ...(created !== undefined ? { created } : {}),
@@ -514,15 +506,6 @@ export class WorkspaceApi {
         ...historyKeys(history.get(path.relative(this.root, file))),
         ...sourceKeys(this.sourceOfFile(d, file, sources)),
         ...moduleOfRow(file, this.sourceOfFile(d, file, sources)),
-        ...(dupe
-          ? {
-              [DUPLICATES_KEY]: dupe.map(
-                r =>
-                  sources.find(x => x.path === path.relative(this.root, r.dir).split(path.sep).join("/"))?.name ??
-                  r.repo
-              ),
-            }
-          : {}),
       })
     }
     const filter = query.get("filter")
@@ -576,8 +559,6 @@ export class WorkspaceApi {
     const created = this.store.createdOf(name, id, fields, file)
     const d = this.store.descriptor(name)
     const sources = this.sourcesOf(d)
-    const contested = this.contested(d)
-    const dupe = contested.duplicates.get(id)
     return {
       id,
       fields: {
@@ -591,15 +572,6 @@ export class WorkspaceApi {
         ...(engine().descriptor.isRuntime(d) && this.runtimeModuleOf(file)
           ? { [MODULE_KEY]: this.runtimeModuleOf(file) }
           : {}),
-        ...(dupe
-          ? {
-              [DUPLICATES_KEY]: dupe.map(
-                r =>
-                  sources.find(x => x.path === path.relative(this.root, r.dir).split(path.sep).join("/"))?.name ??
-                  r.repo
-              ),
-            }
-          : {}),
       },
       path: path.relative(this.root, file),
     }
@@ -612,18 +584,13 @@ export class WorkspaceApi {
     if (target && !chosen) throw new ApiFailure(`${name} reads no source named ${target} — nothing was written.`, 400)
     if (chosen && chosen.access !== "write")
       throw new ApiFailure(`${chosen.note ?? `${target} takes no new record from here`} — nothing was written.`, 400)
-    if (!chosen || chosen === sources[0]) {
-      const { id, file } = this.store.add(name, fields, { id: explicitId })
-      return { id, path: path.relative(this.root, file), source: sources[0]?.name ?? null }
-    }
-    if (chosen.kind !== "layer")
+    if (chosen && chosen !== sources[0])
       throw new ApiFailure(
         `${target} is not where a new ${name} record is written from here — nothing was written.`,
         400
       )
-    const { id, file } = await createInLayer(this.root, chosen.name, name, fields, explicitId)
-    this.reload()
-    return { id, path: path.relative(this.root, file), source: chosen.name }
+    const { id, file } = this.store.add(name, fields, { id: explicitId })
+    return { id, path: path.relative(this.root, file), source: sources[0]?.name ?? null }
   }
   private patchRecord(name: string, id: string, body: any) {
     const { id: _id, path: _path, "last-modified": _lm, last_modified: _lm2, ...rest } = body ?? {}
@@ -847,7 +814,6 @@ function lastModifiedKeys(date: string | null | undefined): Record<string, strin
   return { "last-modified": date, last_modified: date }
 }
 export const MODULE_KEY = "$module"
-export const DUPLICATES_KEY = "$duplicates"
 function sourceKeys(source: SourceEntry | undefined): Record<string, string> {
   return source ? { [SOURCE_KEY]: source.name, [SOURCE_KIND_KEY]: source.kind } : {}
 }

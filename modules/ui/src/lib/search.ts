@@ -2,7 +2,7 @@
  * ONE SEARCH (cr-modules-022) — the browser shell's Cmd/Ctrl-K. The protocol has no cross-collection search route, so
  * this asks each collection the nav lists, a few collections at a time, and ranks what comes back: a title that starts
  * with the term, then one with a word that does, then one that contains it, then a row that matched on another field.
- * A collection that refuses (a layer that cannot be read, a level) is skipped, never an error.
+ * A collection that refuses (one that cannot be read, a level) is skipped, never an error.
  *
  * WHY TWO ASKS PER COLLECTION (the follow-up to 0.3.1, where a record was found only if it was among a collection's
  * first few rows): the list's `q` is a substring over the row as JSON — its KEYS included — so a two-letter term like

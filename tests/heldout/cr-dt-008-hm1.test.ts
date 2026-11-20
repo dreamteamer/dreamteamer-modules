@@ -57,7 +57,7 @@ async function getNav(root) {
   const res = await h.handle("GET", "/nav")
   assert.equal(res.status, 200, JSON.stringify(res.body))
   const ws = res.body.find(n => n.kind === "workspace") ?? res.body[0]
-  return { h, ws, keys: collectionKeys((ws.children ?? []).filter(n => n.kind !== "layers")) }
+  return { h, ws, keys: collectionKeys(ws.children ?? []) }
 }
 
 /** Steps 2–4: a fresh workspace with tasks + contacts installed, one record in each, tasks moved into "Mine". */

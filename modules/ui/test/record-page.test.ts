@@ -1,13 +1,12 @@
 /**
  * The record page's small answers (`lib/recordPage.ts`): the path row, the commit line, which refusal offers a
- * forced delete, the save chord, what a rename may be, the duplicate-id badge, emptiness, and the one write path
+ * forced delete, the save chord, what a rename may be, emptiness, and the one write path
  * a record layout's `setField` goes through.
  */
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
   commitInfo,
-  duplicatesOf,
   isEmptyValue,
   isReferencedRefusal,
   isSaveShortcut,
@@ -86,13 +85,6 @@ test("a rename names what the page can know; the engine says the rest", () => {
   assert.match(renameProblem("a", "b//c")!, /segments/)
   assert.match(renameProblem("a", "../b")!, /segments/)
   assert.match(renameProblem("a", "b c")!, /spaces/)
-})
-
-test("the duplicate-id badge: two or more roots, the first being the one read", () => {
-  assert.deepEqual(duplicatesOf({ $duplicates: ["lab", "northwind-archive"] }), ["lab", "northwind-archive"])
-  assert.equal(duplicatesOf({ $duplicates: ["lab"] }), null)
-  assert.equal(duplicatesOf({}), null)
-  assert.equal(duplicatesOf(null), null)
 })
 
 test("empty is null, undefined, '' and []; false and 0 are values", () => {

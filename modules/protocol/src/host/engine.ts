@@ -35,16 +35,6 @@ export interface DescriptorStorage {
   unavailable?: string | null
   max_bytes?: number
   accept?: string[]
-  roots: Array<{
-    path: string
-    repo?: string
-    layer?: string
-  }>
-  layers: Array<{
-    name: string
-    path: string
-    repo?: string
-  }>
 }
 export interface DescriptorDisplay {
   nav?: {
@@ -215,12 +205,9 @@ export function engineLoaded(): boolean {
   return loaded !== undefined
 }
 export function engineRoot(root: string): string {
-  const candidates = [path.join(root, "git_modules", "dreamteamer"), path.join(root, "node_modules", "dreamteamer")]
-  const found = candidates.find(c => fs.existsSync(path.join(c, "package.json")))
-  if (found) return found
-  throw new Error(
-    "no dreamteamer engine in this workspace — looked in git_modules/dreamteamer and node_modules/dreamteamer (run: npm install)"
-  )
+  const found = path.join(root, "node_modules", "dreamteamer")
+  if (fs.existsSync(path.join(found, "package.json"))) return found
+  throw new Error("no dreamteamer engine in this workspace — looked in node_modules/dreamteamer (run: npm install)")
 }
 export function readEngineVersion(engineDir: string): string | null {
   try {

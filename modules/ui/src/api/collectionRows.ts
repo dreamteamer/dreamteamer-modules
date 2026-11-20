@@ -8,7 +8,7 @@
 import type { CollectionRow } from "./types.ts"
 
 /** A collection row exactly as the engine's `presentation()` emits it (descriptor v2, §4.3). */
-export type PresentationCollection = Omit<CollectionRow, "provenance" | "layer">
+export type PresentationCollection = Omit<CollectionRow, "provenance">
 
 /**
  * ⚠ THE KEYS ARE NAMED, NOT SPREAD, so a key the engine adds is a contract change this function has
@@ -26,8 +26,8 @@ export type PresentationCollection = Omit<CollectionRow, "provenance" | "layer">
  * domain noun — WHERE IT IS DRAWN. They agree for every engine kind except `repos`, plumbing whose
  * records are ordinary files under `data/`. Never fold one into the other here.
  *
- * Plus the two constants the components expect: `provenance: 'disk'` (lib/okf.ts isOkfRow's "real
- * registered collection" marker) and `layer: ''` (= the local workspace).
+ * Plus the constant the components expect: `provenance: 'disk'` (lib/okf.ts isOkfRow's "real
+ * registered collection" marker).
  */
 export function collectionRows(rows: readonly PresentationCollection[]): CollectionRow[] {
   return rows.map(c => ({
@@ -45,6 +45,5 @@ export function collectionRows(rows: readonly PresentationCollection[]): Collect
     // the host's own key, not the engine's: every root the collection reads, named (0.24.0)
     ...(c.sources === undefined ? {} : { sources: c.sources }),
     provenance: "disk",
-    layer: "",
   }))
 }

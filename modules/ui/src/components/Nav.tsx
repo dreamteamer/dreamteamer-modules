@@ -1,6 +1,6 @@
 /**
  * THE NAV — the tree `GET /nav` answers (the workspace's `nav.yaml` resolved by the host: collections, namespaces,
- * folders, saved views, the layers), ported from the Vue ui's NavSidebar.vue + AppNav.vue. Re-read on every
+ * folders, saved views), ported from the Vue ui's NavSidebar.vue + AppNav.vue. Re-read on every
  * invalidation, so a collection added in a terminal appears without a reload.
  *
  * A 32 px TOOLBAR above the rows never scrolls (the rows scroll beneath it, a thin shadow under it while they are
@@ -100,7 +100,7 @@ const rowCls =
   "relative isolate flex items-center gap-1.5 h-[30px] pr-3.5 cursor-pointer whitespace-nowrap text-fg outline-none [&[draggable=true]]:cursor-grab before:content-[''] before:absolute before:inset-y-px before:inset-x-1.5 before:-z-10 before:rounded-lg before:bg-transparent before:[transition:background-color_var(--dt-dur-fast)_var(--dt-ease),box-shadow_var(--dt-dur-fast)_var(--dt-ease)] focus-visible:before:shadow-[0_0_0_2px_var(--dt-focus)]"
 const rowCurrent = "font-semibold before:bg-surface before:shadow-card [&_[data-nav-icon]]:text-accent"
 const rowHover = "hover:before:bg-accent-tint"
-/** A SECTION — a folder, namespace or layers row at the top level: a small uppercase, letter-spaced, muted label. */
+/** A SECTION — a folder or namespace row at the top level: a small uppercase, letter-spaced, muted label. */
 const rowSection =
   "mt-0.5 text-fg-subtle [&_[data-nav-label]]:text-small [&_[data-nav-label]]:font-semibold [&_[data-nav-label]]:uppercase [&_[data-nav-label]]:tracking-[0.05em] [&_[data-nav-icon]]:text-fg-muted"
 /** The line (or the frame) a row shows where a dragged row would land. */

@@ -12,7 +12,7 @@ export interface ActivityRecord {
 export interface ActivityEntry {
   sha: string
   repo: string
-  /** The repo's name — a clone's `git_modules` key, the workspace's own name for `.`. */
+  /** The repo's name — its folder's name, the workspace's own name for `.`. */
   source: string
   author: string
   date: string

@@ -346,12 +346,12 @@ describe("navModel on a real workspace (the contract fixture, on the engine unde
   }
   const top = () => navModel({ root: fixture.root })[0]
 
-  test("no nav.yaml and no settings: flat rows by title (init's notes, projects, tasks), the lab namespace folder, then the layers folder", () => {
+  test("no nav.yaml and no settings: flat rows by title (init's notes, projects, tasks), then the lab namespace folder", () => {
     reset()
     const ws = top()
     assert.deepEqual(
       ws.children.map(n => n.key),
-      ["c/notes", "c/projects", "c/tasks", "n/ns%3Alab", "layers/Layers"]
+      ["c/notes", "c/projects", "c/tasks", "n/ns%3Alab"]
     )
     assert.deepEqual(ws.children[3].target, { name: "lab" })
     assert.equal(ws.notice, undefined)
@@ -370,15 +370,13 @@ describe("navModel on a real workspace (the contract fixture, on the engine unde
     const expected = legacy.map(e =>
       e.kind === "collection"
         ? `c/${e.descriptor.name}`
-        : e.kind === "folder"
-          ? e.folder.key.startsWith("ns:")
-            ? `n/${encodeURIComponent(e.folder.key)}`
-            : `f/${encodeURIComponent(groupLabel(e.folder.key, c.titleOf))}`
-          : "layers"
+        : e.folder.key.startsWith("ns:")
+          ? `n/${encodeURIComponent(e.folder.key)}`
+          : `f/${encodeURIComponent(groupLabel(e.folder.key, c.titleOf))}`
     )
     assert.deepEqual(
-      ws.children.filter(n => !n.key.startsWith("layers/")).map(n => n.key),
-      expected.filter(k => k !== "layers")
+      ws.children.map(n => n.key),
+      expected
     )
     assert.deepEqual(
       ws.children.map(n => n.key).slice(0, 2),
@@ -394,7 +392,7 @@ describe("navModel on a real workspace (the contract fixture, on the engine unde
     const ws = top()
     assert.deepEqual(
       ws.children.map(n => n.key),
-      ["f/Work", "c/notes", "n/ns%3Alab", "layers/Layers"]
+      ["f/Work", "c/notes", "n/ns%3Alab"]
     )
     assert.deepEqual(
       ws.children[0].children.map(n => [n.key, n.target]),
@@ -407,7 +405,7 @@ describe("navModel on a real workspace (the contract fixture, on the engine unde
     assert.match(String(ws.notice), /nav\.yaml/)
     assert.deepEqual(
       ws.children.map(n => n.key),
-      ["c/notes", "c/projects", "c/tasks", "n/ns%3Alab", "layers/Layers"]
+      ["c/notes", "c/projects", "c/tasks", "n/ns%3Alab"]
     )
     fs.writeFileSync(navFile(), "- just\n- a list\n")
     assert.match(String(top().notice), /nav\.yaml/)

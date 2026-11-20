@@ -35,8 +35,7 @@ const titleIcon =
   "inline-flex items-center justify-center w-7 h-7 flex-[0_0_auto] rounded-dt bg-bg-subtle text-fg-subtle"
 const commitRow = "flex items-center gap-2 py-1.5 px-6 border-t border-border text-small min-w-0"
 /** A person's initials in a round chip. (was dt-avatar) */
-export const avatar =
-  "inline-flex items-center justify-center w-5 h-5 rounded-full bg-bg-active text-3xs font-semibold"
+export const avatar = "inline-flex items-center justify-center w-5 h-5 rounded-full bg-bg-active text-3xs font-semibold"
 const commitMessage = "flex-1 min-w-0 truncate"
 const originBox = "inline-flex items-center gap-1.5 flex-wrap"
 const warm = "text-chart-orange"
@@ -50,7 +49,6 @@ const badgeColored = "border-[color-mix(in_srgb,var(--dt-chip-color)_45%,transpa
 const badgeFilled = "bg-[color-mix(in_srgb,var(--dt-chip-bg)_15%,transparent)]"
 
 export type HeaderOrigin = RecordOrigin & {
-  record?: string | null
   access?: SourceEntry["access"]
   via?: SourceEntry["via"]
   note?: string
@@ -64,7 +62,6 @@ export function RecordHeader({
   crumbs,
   commit,
   origin,
-  badge,
   actions,
   onRefresh,
 }: {
@@ -73,8 +70,6 @@ export function RecordHeader({
   crumbs: Crumb[]
   commit: CommitInfo | null
   origin: HeaderOrigin | null
-  /** Beside the title — the duplicate-id badge. */
-  badge?: ReactNode
   actions?: ReactNode
   onRefresh?: () => void
 }) {
@@ -110,7 +105,6 @@ export function RecordHeader({
           <h1 className={titleText} title={title}>
             {title}
           </h1>
-          {badge}
         </div>
         <div className={toolbar}>{actions}</div>
       </div>
@@ -135,14 +129,7 @@ export function RecordHeader({
           {origin && (
             <span className={originBox} title={origin.tooltip} data-origin-kind={origin.kind}>
               {origin.name && (
-                <SourceMark
-                  name={origin.name}
-                  record={origin.record ?? null}
-                  context="record"
-                  access={origin.access}
-                  via={origin.via}
-                  note={origin.note}
-                />
+                <SourceMark name={origin.name} access={origin.access} via={origin.via} note={origin.note} />
               )}
               {classWord && <span className={subtle}>{classWord}</span>}
               {origin.access === "read" && (

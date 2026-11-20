@@ -671,11 +671,7 @@ export async function loadModules(): Promise<void> {
     const problem = host ? host["moduleGrantProblem"] : window.__DT_MODULE_GRANT_PROBLEM__
     if (problem) warn(`the module-app grant could not be read (${String(problem)}) — no grant applies`)
     for (const name of names) {
-      const home =
-        (sources.layers ?? []).find((l: any) => l.name === name || (l.modules ?? []).includes?.(name))?.name ??
-        sources.workspace?.name ??
-        sources.workspace ??
-        "."
+      const home = sources.workspace?.name ?? sources.workspace ?? "."
       const scope = buildModuleScope({
         module: name,
         home,

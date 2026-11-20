@@ -50,7 +50,6 @@ import { recordDisplayOf, recordRendererId } from "../lib/recordDisplay.ts"
 import { recordOrigin } from "../lib/recordOrigin.ts"
 import {
   commitInfo,
-  duplicatesOf,
   isReferencedRefusal,
   isSaveShortcut,
   pathCrumbs,
@@ -81,7 +80,6 @@ import {
   buttonTone,
   cx,
   dialogActions,
-  dupBadge,
   error as errorCls,
   hintError,
   input,
@@ -180,7 +178,6 @@ export function RecordPage({
     const entry = o.name ? sourceEntry(sources, o.name) : undefined
     return {
       ...o,
-      record: entry?.record ?? null,
       ...(entry?.access ? { access: entry.access } : {}),
       ...(entry?.via ? { via: entry.via } : {}),
       ...(entry?.note ? { note: entry.note } : {}),
@@ -384,7 +381,6 @@ export function RecordPage({
   // the previous record stays in hand while the next one loads: draw neither until it arrives
   if (id && doc.data?.id !== id) return <section className={cx(page, subtle)}>Loading…</section>
 
-  const duplicates = duplicatesOf(record)
   const actions =
     mode === "view" ? (
       <>
@@ -513,17 +509,6 @@ export function RecordPage({
         crumbs={pathCrumbs(collection, id, base)}
         commit={create ? null : commitInfo(record)}
         origin={origin}
-        badge={
-          duplicates && (
-            <span
-              className={dupBadge}
-              data-duplicates={duplicates.join(",")}
-              title={`Held by both ${duplicates.join(" and ")} — ${duplicates[0]}'s copy is the one read`}
-            >
-              <Icon name="warning" /> duplicate id
-            </span>
-          )
-        }
         actions={actions}
         onRefresh={id ? () => setReloads(n => n + 1) : undefined}
       />

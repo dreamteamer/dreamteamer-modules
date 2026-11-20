@@ -1,13 +1,11 @@
 #!/usr/bin/env node
 // The machine-with-no-editor walk (cr-modules-005 line 7), run by .github/workflows/web-walk.yml on a fresh
-// ubuntu runner: the synthetic Northwind hq with one git_modules layer, `npm install` of the packed protocol, ui
+// ubuntu runner: the synthetic Northwind hq, `npm install` of the packed protocol, ui
 // and web tarballs (the app is @dreamteamer/ui's built page, inside the ui tarball), `dt compile`, then the
 // one command — `dt web open` through the workspace's own engine CLI — and headless Chromium:
 //   - no `code` on PATH, and no .dreamteamer/editor.json before the start (no editor ever opened it)
-//   - the page draws the nav (with its Layers folder) and the layer's record in the projects list
-//   - the layer's record, edited in the browser, lands in the layer's clone
-//   - renaming it is refused by the engine, naming the layer (the record page has no rename gesture: the
-//     refusal is the API's answer to the signed-in page)
+//   - the page draws the nav and a record in the projects list
+//   - the record, edited in the browser, lands in the workspace
 // usage: node modules/web/test/walk/no-vscode.mjs <protocol.tgz> <ui.tgz> <web.tgz>   (DT_ENGINE_DIR: the fixture's engine)
 import { execFileSync, spawnSync } from "node:child_process"
 import fs from "node:fs"
@@ -70,40 +68,27 @@ try {
   await page.goto(url)
   await page.waitForSelector(".dt-nav-row", { timeout: 30_000 })
   const rows = await page.$$eval(".dt-nav-row .dt-nav-label", e => e.map(x => x.textContent.trim()))
-  ok(rows.includes("Projects") && rows.includes("Layers"), "the nav draws, with its Layers folder", rows.join(" · "))
+  ok(rows.includes("Projects"), "the nav draws", rows.join(" · "))
   await go(page, "/content/projects")
   const seen = await page
-    .waitForFunction(() => document.body.innerText.includes("Harbor Mutual archive"), null, { timeout: 10_000 })
+    .waitForFunction(() => document.body.innerText.includes("Harbor Mutual renewal"), null, { timeout: 10_000 })
     .then(
       () => true,
       () => false
     )
-  ok(seen, "the layer's record is in the projects list")
+  ok(seen, "the record is in the projects list")
   await page.screenshot({ path: shot("no-vscode-list") })
 
-  await go(page, "/content/projects/harbor-mutual-archive")
+  await go(page, "/content/projects/harbor-mutual-renewal")
   await page.click('button[title="Edit"]')
-  await page.fill('[data-field="name"] input', "Harbor Mutual archive, 2019")
+  await page.fill('[data-field="name"] input', "Harbor Mutual renewal, 2019")
   await page.click('button[title="Save"]')
   await page.waitForSelector('button[title="Edit"]', { timeout: 10_000 })
-  const inLayer = execFileSync("git", ["status", "--porcelain"], { cwd: f.layer, encoding: "utf8" }).trim()
+  const changed = execFileSync("git", ["status", "--porcelain"], { cwd: f.root, encoding: "utf8" }).trim()
   ok(
-    inLayer === "M data/projects/harbor-mutual-archive.project.md",
-    "the edit landed in the layer's clone",
-    JSON.stringify(inLayer)
-  )
-  const rename = await page.evaluate(async () => {
-    const r = await fetch("/api/collections/projects/rename", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ old: "harbor-mutual-archive", new: "harbor-mutual-history" }),
-    })
-    return { status: r.status, text: await r.text() }
-  })
-  ok(
-    rename.status === 400 && /held by layer northwind-archive/.test(rename.text),
-    "renaming it is refused, naming the layer",
-    `${rename.status} ${rename.text.slice(0, 160)}`
+    changed.split("\n").includes(" M data/projects/harbor-mutual-renewal.project.md"),
+    "the edit landed in the workspace",
+    JSON.stringify(changed)
   )
   await page.screenshot({ path: shot("no-vscode-record") })
   ok(errors.length === 0, "no page errors", JSON.stringify(errors.slice(0, 3)))

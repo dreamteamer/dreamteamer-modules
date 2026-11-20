@@ -4,7 +4,7 @@
 // node's `notice`, round-2 amendment, or a node of kind message) naming nav.yaml — never a 500, never an empty tree —
 // and PATCH /nav refuses to write over it (400 naming nav.yaml, the file byte-identical); PUT with a valid document
 // replaces it. Asked through the protocol's shared handler AND through the http host (dt web), on the contract
-// fixture workspace (projects, tasks, lab/samples in namespace lab, a record layer), with no restart between cases.
+// fixture workspace (projects, tasks, lab/samples in namespace lab), with no restart between cases.
 import { test, describe, before, after } from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
@@ -69,7 +69,7 @@ const shape = nodes =>
   nodes.map(n => ({
     kind: n.kind,
     key: n.key,
-    ...(n.children && n.kind !== "layers" ? { children: shape(n.children) } : {}),
+    ...(n.children ? { children: shape(n.children) } : {}),
   }))
 const messageOf = top =>
   [top.notice, ...(top.children ?? []).filter(n => n.kind === "message").map(n => n.label)].filter(Boolean).join(" | ")
@@ -86,7 +86,7 @@ before(
     assert.equal(res.status, 200)
     flat = res.body[0]
     assert.ok(flat.children.length > 2, "the no-document drawing is empty")
-    // the no-document drawing: rows alphabetical by title, then the namespace folder (then the layers folder)
+    // the no-document drawing: rows alphabetical by title, then the namespace folder
     const kinds = flat.children.map(n => n.kind)
     assert.ok(
       kinds.indexOf("namespace") > kinds.lastIndexOf("collection"),

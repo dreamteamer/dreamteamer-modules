@@ -145,13 +145,13 @@ export function gridColumns(page: UiViewRecord): 1 | 2 {
 
 /** Where a compiled view came from, as the host stamps every runtime row (`src/sources.ts`
  *  moduleSource): `own` — a module under the workspace's `modules/`, the workspace module included;
- *  `layer`; `module` — a package (`node_modules`) or a git module. Nearer wins. */
-const SOURCE_RANK: Record<string, number> = { own: 0, layer: 1, module: 2 }
-const rankOf = (v: UiViewRecord) => SOURCE_RANK[String(v["$source-kind"] ?? "")] ?? 3
+ *  `module` — a package (`node_modules`). Nearer wins. */
+const SOURCE_RANK: Record<string, number> = { own: 0, module: 1 }
+const rankOf = (v: UiViewRecord) => SOURCE_RANK[String(v["$source-kind"] ?? "")] ?? 2
 
 /**
  * The page view that is a module's page: the PAGE view whose `options.module` names it. When several
- * do, the one NEAREST the workspace wins — the workspace's own modules, then a layer, then a package —
+ * do, the one NEAREST the workspace wins — the workspace's own modules, then a package —
  * and only then the lowest id: a workspace that authors a page for an installed package (rnd ships
  * `modules-rnd`) gets ITS page, whatever its id (review 2026-10-31: the lowest id alone let the shipped
  * page win, silently). The page says which view it drew (`pageOrigin`).
@@ -168,7 +168,7 @@ export function pageOrigin(view: UiViewRecord): string {
   return `ui-view ${view.id}${typeof module === "string" && module ? ` · from ${module}` : ""}`
 }
 
-/** A child's own filter, narrowed to one source (a record layer) — the source picker's `$source is <name>`. */
+/** A child's own filter, narrowed to one source — the source picker's `$source is <name>`. */
 export function scopedFilter(
   filter: Record<string, unknown> | undefined,
   source: string | undefined

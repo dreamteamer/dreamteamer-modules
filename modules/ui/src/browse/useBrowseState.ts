@@ -271,7 +271,7 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on the mount the note was meant for
   }, [])
 
-  // a navigation that changes only `?filter=` (a layer's nav row, a nav row with none) reaches a mounted browse:
+  // a navigation that changes only `?filter=` (a nav row with one, a nav row with none) reaches a mounted browse:
   // re-seed the builder from it. Only a CHANGE re-seeds (compared with the last one seen, so StrictMode's second run
   // cannot undo a change made on mount), and never to a filter this browse wrote itself: a write the route has not
   // caught up with yet (the id re-mint on mount, then the created-here widening) would otherwise undo the next one.
@@ -472,7 +472,6 @@ export function useBrowseState(collection: string, config: BrowseConfig = {}) {
       const entry = sourceEntry(sourceFacets, name) ?? sourceEntry(sources, name)
       return {
         name,
-        record: entry?.record ?? null,
         ...(entry?.access ? { access: entry.access } : {}),
         ...(entry?.via ? { via: entry.via } : {}),
         ...(entry?.note ? { note: entry.note } : {}),

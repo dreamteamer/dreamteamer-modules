@@ -3,7 +3,7 @@
  * grouped by one field, drawn as ONE NUMBER PER VALUE, each a link to the collection's list filtered to that
  * value — the at-a-glance panel a page view nests (requests suggested vs accepted, issues open vs fixed).
  *
- * Not a second query vocabulary: the view's own filter, the page's layer scope and the browse's filter all apply
+ * Not a second query vocabulary: the view's own filter, the page's source scope and the browse's filter all apply
  * before a record is counted, and the bands are `bucketize`'s — the same buckets, order, labels and colours the
  * table bands by, so a number here and a band header there cannot disagree. A grouped browse requests All rows
  * and the layout `summarizes` (no pager), so a count is never one page's worth. With no `group_by` it draws the

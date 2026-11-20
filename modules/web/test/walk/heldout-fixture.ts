@@ -28,8 +28,8 @@ const PATTERN = `export default ({ registerApp, registerEdit, registerView }) =>
 		for (const k of ['$source', 'id', 'created', 'stub']) {
 			out('h6post_' + k.replace('$', 'd'), await st('/api/collections/pattern-items/records', J('POST', { name: 'h6 ' + k, [k]: k === 'stub' ? true : 'x' })));
 			out('h6patch_' + k.replace('$', 'd'), await st('/api/collections/pattern-items/records/pattern-one', J('PATCH', { [k]: k === 'stub' ? true : 'x' }))); }
-		out('h6layerpatch', await st('/api/collections/pattern-items/records/pattern-held', J('PATCH', { name: 'x' })));
-		out('h6layerdelete', await st('/api/collections/pattern-items/records/pattern-held', J('DELETE')));
+		out('h6strangerpatch', await st('/api/collections/pattern-items/records/no-such-pattern', J('PATCH', { name: 'x' })));
+		out('h6strangerdelete', await st('/api/collections/pattern-items/records/no-such-pattern', J('DELETE')));
 		out('h6target', await st('/api/collections/pattern-items/records?target=hq', J('POST', { name: 'h6 target' })));
 		out('h6clean', await st('/api/collections/pattern-items/records', J('POST', { name: 'h6 clean' })));
 		out('done', 1);
@@ -84,7 +84,7 @@ const PROBE2 = `export default ({ registerApp, registerEdit, registerView, regis
 };
 `
 
-/** Adds the held-out modules, a layer record of pattern-items, and the 1000 probe rows; compiles; returns the module names. */
+/** Adds the held-out modules and the 1000 probe rows; compiles; returns the module names. */
 export function addHeldout(f) {
   const mod = (name, files) => {
     for (const [rel, text] of Object.entries(files)) {
@@ -177,22 +177,6 @@ export function addHeldout(f) {
     ["chunk-items", "c1"],
   ])
     rec(path.join(f.root, "data", c), id, `name: ${id}\n`)
-  // the layer also holds one pattern-items record
-  const layer = path.join(f.root, "git_modules", "northwind-archive")
-  rec(path.join(layer, "data", "pattern-items"), "pattern-held", "name: Pattern held by the layer\n")
-  execFileSync("git", ["add", "-A"], { cwd: layer })
-  execFileSync(
-    "git",
-    ["-c", "user.name=Dana Oren", "-c", "user.email=dana@northwind.example", "commit", "-qm", "pattern-held"],
-    { cwd: layer }
-  )
-  const pkgFile = path.join(f.root, "package.json")
-  const p = JSON.parse(fs.readFileSync(pkgFile, "utf8"))
-  p.dreamteamer.git_modules["northwind-archive"].records = [
-    ...p.dreamteamer.git_modules["northwind-archive"].records,
-    "pattern-items",
-  ]
-  fs.writeFileSync(pkgFile, JSON.stringify(p, null, "\t") + "\n")
   const c = f.dt("compile")
   if (c.status !== 0) throw new Error(`compile: ${c.stdout}\n${c.stderr}`)
   execFileSync("git", ["add", "-A"], { cwd: f.root })

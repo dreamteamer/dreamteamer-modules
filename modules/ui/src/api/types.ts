@@ -56,8 +56,6 @@ export interface CollectionRow {
   internal: boolean
   /** Webview constant — 'disk' on every registered row (`lib/okf.ts`'s marker). */
   provenance?: string
-  /** Webview constant — `''`, the local workspace. */
-  layer?: string
   /**
    * Every root this collection's records are read from, NAMED, write root first — the extension's
    * own key on the engine's row (host `src/sources.ts`, 0.24.0). What decides whether a browse is
@@ -66,20 +64,17 @@ export interface CollectionRow {
   sources?: SourceEntry[]
 }
 
-/** One root a collection reads, named: the workspace's `package.json` name, a layer's `git_modules`
- *  key, or a module's id. `count` is the records read FROM it (the write root wins a duplicate). */
+/** One root a collection reads, named: the workspace's `package.json` name or a module's id. `count` is the
+ *  records read FROM it. */
 export interface SourceEntry {
   name: string
-  kind: "own" | "layer" | "module"
+  kind: "own" | "module"
   /** The repo an edit of such a record commits to, workspace-relative (`.` = the workspace). */
   repo: string
   path: string
-  /** False for a layer whose clone is absent — its records are not read. */
   installed: boolean
   count: number
-  /** `repos/<id>` when a `repos` record's `url` matches the root's remote — rendered as a link. */
-  record?: string
-  /** What the folder is: the workspace's own root, a linked clone, a record layer, an installed
+  /** What the folder is: the workspace's own root, a linked clone, an installed
    *  package (host `src/sources.ts` `SourceVia`). Absent from a host older than cr-vscode-004. */
   via?: SourceVia
   /** Whether a write from this workspace lands there — `write` (edits and new records), `edit` (edits
@@ -89,7 +84,7 @@ export interface SourceEntry {
   note?: string
 }
 
-export type SourceVia = "own" | "clone" | "layer" | "package"
+export type SourceVia = "own" | "clone" | "package"
 
 /** REMOTE ACCESS (cr-vscode-012, host `src/remote-access.ts`): what a source's remote grants, computed
  *  live as the account the remote pushes as, never stored. */

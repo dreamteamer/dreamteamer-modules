@@ -16,7 +16,7 @@ export interface ModuleEntry {
   title: string
   /** The package name, verbatim. */
   name: string
-  /** How it arrived: `modules` · `git_modules` · `node_modules` · `root`. */
+  /** How it arrived: `modules` · `node_modules` · `root`. */
   location: string
   /** Workspace-relative root of its sources. */
   path: string
