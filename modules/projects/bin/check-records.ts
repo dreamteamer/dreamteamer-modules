@@ -200,8 +200,7 @@ function main() {
 }
 
 /** True when run as a script. `process.argv[1]` is the path as invoked and `import.meta.url` the path
- *  resolved; both are realpath'd so the guard also runs when reached through a symlink such as
- *  `git_modules/<name>`. */
+ *  resolved; both are realpath'd so the guard also runs when reached through a symlink (an `npm link`). */
 const isMain = () => {
   if (!process.argv[1]) return false
   const real = (p: string) => {

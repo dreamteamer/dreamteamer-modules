@@ -73,7 +73,7 @@ async function drawn(root) {
   assert.ok(ws?.children, `no workspace node drawn: ${JSON.stringify(nodes.map(n => n.kind))}`)
   return ws
 }
-const top = ws => ws.children.filter(n => n.kind !== "layers")
+const top = ws => ws.children
 const collectionKeys = (nodes, out = new Set()) => {
   for (const n of nodes) {
     if (n.kind === "collection") out.add(n.key)

@@ -1,8 +1,7 @@
 # dreamteamer-modules — house rules
 
 One repo, one npm package per module under `modules/<id>/`, each published as `@dreamteamer/<id>`
-and versioned on its own. The root is a private npm workspace and is never a dreamteamer workspace;
-its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle (`node <clone>/scripts/preview.mjs link <clone>`).
+and versioned on its own. The root is a private npm workspace and is never a dreamteamer workspace.
 
 1. **NO PERSONAL DATA.** No real names, emails, domains, ids, home paths or company names in any
    file, example, comment or commit message. Use the synthetic cast: Dana Oren and Sam Diaz,
@@ -33,8 +32,7 @@ its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle 
    skills hold `.mts` is built whole into `dist/skills` (`dreamteamer.skills: "dist/skills"`). The manifest
    names `dist/` for main, exports, the extension, `bin` and `dreamteamer.scripts`. The source never ships.
 6. **A script a person runs has its own entry.** Realpath both sides of the main guard, resolve the
-   workspace by walking up to `package-lock.json` and skipping a folder directly inside
-   `git_modules/` (`lib/findWorkspace.mjs`, one copy per module). A skill script is run from the
+   workspace by walking up to `package-lock.json` (`lib/findWorkspace.ts`, one copy per module). A skill script is run from the
    workspace root as `.dreamteamer/skills/<skill>/bin/<script>`; a module script by name, never by path —
    `dt run @dreamteamer/<id> <script>` (declared in `dreamteamer.scripts`), or through the module's npm `bin`.
 7. **A module that states a rule ships the script that enforces it** (`check-records`, from `bin/check-records.ts`, in

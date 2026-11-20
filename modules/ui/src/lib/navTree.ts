@@ -4,8 +4,7 @@
  * is the decision, pure, so it is tested without a DOM; components/Nav.tsx only turns DOM events into these calls.
  * Ported from the Vue ui's components/NavSidebar.vue (dropOp, tailOp, the row menu) and NavRow.ts (dropWhere).
  *
- * Layers keep their own nav: a drop onto a layer row or the layers folder means nothing, and their rows have no menu.
- * A view row is not arranged: a drop on it is a drop after its collection.
+ * Only folders, namespaces and collections are arranged: a drop onto anything else means nothing. A view row is not arranged: a drop on it is a drop after its collection.
  */
 
 /** What an op addresses (copied from @dreamteamer/protocol `navDoc.d.ts` — ui takes no protocol dependency).
@@ -46,12 +45,13 @@ export interface DropHint {
 
 /** The MIME type a dragged row's key travels under. */
 export const NAV_DRAG_TYPE = "text/x-dt-nav"
-export const LAYER_KINDS = new Set(["layers", "layer", "layer-group", "layer-collection", "layer-note"])
 export const ARRANGED = new Set(["folder", "namespace", "collection"])
 /** The hint key of the empty area under the last row — the bottom of the top level as a drop. */
 export const TAIL = "::tail"
 
 const isContainer = (n: { kind: string }) => n.kind === "folder" || n.kind === "namespace"
+/** A row a drop can mean something on: an arranged row, or a view (a drop after its collection). */
+const dropsOnto = (n: { kind: string }) => ARRANGED.has(n.kind) || n.kind === "view"
 
 /** Every node by key, the node each sits in, and the rows at depth 0 (the workspace node's children, and any other
  *  top node a host sends beside it — the workspace node is the toolbar's name, never a row). */
@@ -101,7 +101,7 @@ function parentInto(ix: NavIndex, n: NavNode): { into?: NavTarget } {
   return p && p.kind !== "workspace" && p.target ? { into: p.target } : {}
 }
 
-/** The arranged siblings of a node (layers and views are not), in drawn order. */
+/** The arranged siblings of a node (views are not), in drawn order. */
 export function siblingsOf(ix: NavIndex, n: NavNode): NavNode[] {
   const p = ix.parentOf.get(n.key)
   return (p?.children ?? ix.nodes).filter(s => s.target && ARRANGED.has(s.kind))
@@ -112,7 +112,7 @@ function opensOnto(n: NavNode, isOpen: (key: string) => boolean): boolean {
   return isOpen(n.key) && (n.children ?? []).some(c => c.target && ARRANGED.has(c.kind))
 }
 
-/** A drop of the dragged row onto `targetKey` as a move, or null when it means nothing (a layer, itself, no target). */
+/** A drop of the dragged row onto `targetKey` as a move, or null when it means nothing (not a row, itself, no target). */
 export function dropOp(
   ix: NavIndex,
   key: string | null,
@@ -122,7 +122,7 @@ export function dropOp(
 ): NavOp | null {
   const dragged = key ? ix.byKey.get(key) : undefined
   let onto = ix.byKey.get(targetKey)
-  if (!dragged?.target || !onto || LAYER_KINDS.has(onto.kind) || dragged.key === onto.key) return null
+  if (!dragged?.target || !onto || !dropsOnto(onto) || dragged.key === onto.key) return null
   if (onto.kind === "view") {
     onto = ix.parentOf.get(onto.key)
     where = "after"
@@ -156,7 +156,7 @@ export function tailOp(ix: NavIndex, key: string | null): NavOp | null {
 }
 
 /** Where the empty area's drop line draws: where `position: bottom` lands — after the last ARRANGED top-level row, so
- *  above a Layers folder drawn below it (as a line on that row's top edge), else on the empty area's own top edge. */
+ *  above any other row drawn below it (as a line on that row's top edge), else on the empty area's own top edge. */
 export function tailLine(ix: NavIndex): DropHint {
   let last = -1
   ix.top.forEach((n, i) => {
@@ -166,10 +166,10 @@ export function tailLine(ix: NavIndex): DropHint {
   return below ? { key: below.key, where: "before" } : { key: TAIL, where: "after" }
 }
 
-/** The line is drawn where the drop lands: none over a layer, after its collection over a view row. */
+/** The line is drawn where the drop lands: none over a row that is not arranged, after its collection over a view row. */
 export function hoverHint(ix: NavIndex, h: DropHint): DropHint | null {
   const onto = ix.byKey.get(h.key)
-  if (!onto || LAYER_KINDS.has(onto.kind)) return null
+  if (!onto || !dropsOnto(onto)) return null
   if (onto.kind === "view") {
     const p = ix.parentOf.get(onto.key)
     return p ? { key: p.key, where: "after" } : null
@@ -218,7 +218,7 @@ export function toolbarMenu(hiddenNames: string[]): NavMenu {
   }
 }
 
-/** A row's menu and what each entry sends; null for a row that has none (a layer, a view). */
+/** A row's menu and what each entry sends; null for a row that has none (a view, a message). */
 export function rowMenu(ix: NavIndex, key: string): NavMenu | null {
   const n = ix.byKey.get(key)
   if (!n?.target || !ARRANGED.has(n.kind)) return null
@@ -291,7 +291,7 @@ export function hiddenIn(doc: { tree?: unknown; hidden?: unknown }): string[] {
   return out
 }
 
-/** The row of the current route: a row naming a query (a layer's `?filter=`) is active on exactly that route; any
+/** The row of the current route: a row naming a query (`?filter=`) is active on exactly that route; any
  *  other on its path and below. */
 export function rowActive(nodeRoute: string | undefined, route: string): boolean {
   if (nodeRoute === undefined) return false

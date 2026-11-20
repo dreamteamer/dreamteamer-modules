@@ -40,7 +40,7 @@ export function stageTagWarnings(rows: { tags?: unknown; deployed_on?: unknown; 
   return out
 }
 
-/** The extension's `check`: every change request this workspace reads (its own and its layers'), its file
+/** The extension's `check`: every change request this workspace reads, its file
  *  named relative to the root. Nothing on an engine without the warning channel, or without the collection. */
 export function checkStageTags({ ws, dt }: Pick<ExtensionContext, "ws" | "dt">) {
   if (dt?.CHECK_WARNINGS !== true) return []

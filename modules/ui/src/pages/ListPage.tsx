@@ -3,7 +3,7 @@
  * columns, sort and layout options), with search, filters, grouping and saved views (`browse/Browse.tsx`).
  *
  * Keyed on what the browse consumed when it started — the collection, its list block and the sources it reads —
- * so a display saved, compiled or a layer installed after the page opened reaches the screen by a remount.
+ * so a display saved or compiled after the page opened reaches the screen by a remount.
  */
 import { useApp } from "../AppContext.tsx"
 import { Browse } from "../browse/Browse.tsx"

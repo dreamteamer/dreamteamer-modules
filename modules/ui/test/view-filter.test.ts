@@ -77,13 +77,13 @@ describe("filterToWrite — the builder reaching the record", () => {
   })
 })
 
-// operator 2026-10-29: a mounted browse read `?filter=` once, so the second layer's nav row (same path,
-// another filter) left the first layer's records on screen.
+// operator 2026-10-29: a mounted browse read `?filter=` once, so a second nav row (same path, another
+// filter) left the first row's records on screen.
 describe("filterFromUrl — a filter-only navigation reaching a mounted browse", () => {
   const projectA = groupOf({ field: "$source", operator: "_eq", value: "project-a" })
   const projectB = groupOf({ field: "$source", operator: "_eq", value: "project-b" })
 
-  test("another layer's filter replaces the one the builder holds", () => {
+  test("another row's filter replaces the one the builder holds", () => {
     assert.deepEqual(
       filterFromUrl(serializeFilterGroup(projectB), projectA, undefined)?.rules.map(r => r.value),
       ["project-b"]

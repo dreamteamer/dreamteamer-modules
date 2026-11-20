@@ -152,16 +152,14 @@ process.stdout.write(JSON.stringify(m));
   assert.equal(r.status, 0, `navModel failed:\n${r.stdout}\n${r.stderr}`)
   return JSON.parse(r.stdout)[0]
 }
-/** The drawing that can be compared: kind, key, label, children; marks, routes, tooltips, icons and the layers folder out. */
+/** The drawing that can be compared: kind, key, label, children; marks, routes, tooltips and icons out. */
 const comparable = nodes =>
-  nodes
-    .filter(n => n.kind !== "layers")
-    .map(n => ({
-      kind: n.kind,
-      key: n.key,
-      label: n.label,
-      ...(n.children?.length && n.kind !== "collection" ? { children: comparable(n.children) } : {}),
-    }))
+  nodes.map(n => ({
+    kind: n.kind,
+    key: n.key,
+    label: n.label,
+    ...(n.children?.length && n.kind !== "collection" ? { children: comparable(n.children) } : {}),
+  }))
 const collections = (nodes, out = []) => {
   for (const n of nodes) {
     if (n.kind === "collection") out.push(n.key)

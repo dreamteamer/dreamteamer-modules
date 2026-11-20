@@ -851,11 +851,6 @@ export async function startWeb({
   watch(path.join(root, NAV_DOC_FILE), () =>
     fs.watch(root, (_e, f) => f && String(f) === NAV_DOC_FILE && changed(path.join(root, NAV_DOC_FILE)))
   )
-  try {
-    for (const l of fs.readdirSync(path.join(root, "git_modules"))) watchDir(path.join(root, "git_modules", l, "data"))
-  } catch {
-    /* no layers */
-  }
 
   // ---- lifetime ----------------------------------------------------------------------------
   let resolveClosed: (why: string) => void

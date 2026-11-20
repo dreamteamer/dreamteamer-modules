@@ -23,7 +23,7 @@ export function recordPageFields(collection: string, fields: FieldRow[]): FieldR
 /**
  * THE ENGINE'S `stub` STAYS AN ORDINARY CHECKBOX ON THE RECORD FORM (cr-vscode-004 line 9, operator
  * decision 6a, 2026-10-31). Engine 0.41.0 injects `stub` — a boolean that makes a record yield to any
- * non-stub of its id in another root — into every layerable collection, projected hidden from the list
+ * non-stub of its id in another root — into every collection, projected hidden from the list
  * AND the form, so the record page drew it read-only and the edit form had no control for it. Until a
  * later change puts it behind an action, the form draws it as the boolean it is: `form` comes off its
  * `hidden`, and nothing else moves (the list still leaves it out; the row says it in words instead).

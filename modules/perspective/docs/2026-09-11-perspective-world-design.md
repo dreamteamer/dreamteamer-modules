@@ -433,7 +433,7 @@ message naming a compile internal rather than the file anybody has to edit. **Th
 bricked until a human found the file by reading the wrong error.**
 
 `scanSources` now walks the workspace's own source tree (`modules/`, plus the flat source kinds at
-the root; never `node_modules`, `git_modules` or `data`) for any `perspective/<moved>` not followed
+the root; never `node_modules` or `data`) for any `perspective/<moved>` not followed
 by another name character — which matches a bare `extends:` target, a `collection:` line and a full
 record reference alike, and never matches `perspective/activity-weeks`. It runs inside `plan()`,
 which is the first thing `main()` does and the whole of what `--dry-run` does, **because a check that
@@ -462,7 +462,7 @@ walk found the PACKAGE's own root and looked in a tree that has no records by de
 This is the worst failure this repo can ship, because it is byte-identical to a pass — and it is
 exactly what the module's own `gates` descriptor refuses: *"a verdict without a measurement is
 success being reported instead of a result being quoted."* It now resolves from the CURRENT
-DIRECTORY (with the same `git_modules/` skip `lib/vault.mjs` carries, for the same measured reason),
+DIRECTORY (with a `git_modules/` skip, for the same measured reason, until 2026-11-20: the engine removed `git_modules` (git modules and record layers)),
 and **refuses with exit 2 when no workspace is found** rather than reporting a clean zero. There is
 deliberately NO script-relative fallback: that fallback WAS the defect, and a fallback that can
 silently answer the wrong question is worse than an error. ⚠ `0 checked` stays legal for a genuinely

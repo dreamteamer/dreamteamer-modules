@@ -8,7 +8,6 @@
 import type { FieldRow, SourceEntry } from "../api/types.ts"
 import { SourceMark } from "../components/SourceMark.tsx"
 import { formatFilesize } from "../lib/formatFilesize.ts"
-import { duplicatesOf } from "../lib/recordPage.ts"
 import { SOURCE_FIELD, SOURCE_KIND_FIELD, isOwnSource } from "../lib/sources.ts"
 import { RenderView } from "../render/Render.tsx"
 import { mono, subtle } from "../styles/classes.ts"
@@ -43,7 +42,6 @@ export function RecordInfo({
   const foreign = typeof sourceName === "string" && sourceName && !isOwnSource(sourceName, sources) ? sourceName : null
   const entry = foreign ? sources?.find(s => s.name === foreign) : undefined
   const kind = typeof record[SOURCE_KIND_FIELD] === "string" ? (record[SOURCE_KIND_FIELD] as string) : ""
-  const duplicates = duplicatesOf(record)
   const attachments = (Array.isArray(record["attachments"]) ? record["attachments"] : []).filter(
     (a): a is { name: string; size?: number } =>
       a !== null && typeof a === "object" && typeof (a as { name?: unknown }).name === "string"
@@ -83,22 +81,7 @@ export function RecordInfo({
         <div data-field="source">
           <dt>Source</dt>
           <dd className={computed} title={`read from ${foreign}${kind ? ` (${kind})` : ""}`}>
-            <SourceMark
-              name={foreign}
-              record={entry?.record ?? null}
-              context="record"
-              access={entry?.access}
-              via={entry?.via}
-              note={entry?.note}
-            />
-          </dd>
-        </div>
-      )}
-      {duplicates && (
-        <div data-field="duplicates">
-          <dt>Duplicate id</dt>
-          <dd title={`held by both ${duplicates.join(" and ")} — ${duplicates[0]}'s copy is the one read`}>
-            held by {duplicates.join(" and ")}
+            <SourceMark name={foreign} access={entry?.access} via={entry?.via} note={entry?.note} />
           </dd>
         </div>
       )}

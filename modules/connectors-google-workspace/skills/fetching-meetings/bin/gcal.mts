@@ -198,11 +198,10 @@ export function classifyAccess(rows: CalendarRow[], calendarsByAccount: Record<s
 // ── where WORK_CALENDARS comes from ─────────────────────────────────────────────────────────────
 // The process environment wins; otherwise the workspace `.env`, read through the engine's own
 // `parseEnvValues`, so a quoted multi-line value parses exactly as the engine parses it. The
-// workspace is the folder holding package-lock.json, skipping one directly inside `git_modules/`.
+// workspace is the folder holding package-lock.json.
 function workspaceRoot(from: string): string | null {
   for (let d = from; d !== dirname(d); d = dirname(d)) {
-    const inGitModules = basename(dirname(d)) === "git_modules"
-    if (!inGitModules && existsSync(join(d, "package-lock.json"))) return d
+    if (existsSync(join(d, "package-lock.json"))) return d
   }
   return null
 }
@@ -300,7 +299,7 @@ async function main(argv: string[]) {
 }
 
 /** Run as a script, including through a symlink: both sides are realpathed before they are compared,
- *  or a `git_modules/<name>` link makes the guard false and the script exits 0 having done nothing. */
+ *  or a symlink (an `npm link`) makes the guard false and the script exits 0 having done nothing. */
 const isMain = () => {
   if (!process.argv[1]) return false
   const real = (p: string) => {

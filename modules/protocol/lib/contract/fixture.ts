@@ -6,7 +6,6 @@
 //   tasks        name · done · project → projects
 //   lab/samples  a namespaced collection (its name carries a slash; routes send it encoded)
 //   a ui-view, a skill, a command and its binding on projects
-//   git_modules/northwind-archive — a record LAYER holding one `projects` record
 import { execFileSync, spawnSync } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
@@ -14,7 +13,6 @@ import path from "node:path"
 
 export interface Fixture {
   root: string
-  layer: string
   git: (args: string[], cwd?: string) => string
   dt: (...args: string[]) => { status: number | null; stdout: string; stderr: string }
   head: () => string
@@ -124,11 +122,9 @@ description: review an active project
 `,
 }
 
-const LAYER = "northwind-archive"
-
 /**
  * Build the fixture with the engine at `engineDir` (a dreamteamer checkout or package with `bin/` and
- * public API, resolved through its package.json `exports`). Returns `{ root, layer, git, dt, head, cleanup }`.
+ * public API, resolved through its package.json `exports`). Returns `{ root, git, dt, head, cleanup }`.
  */
 export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: { engineDir: string; tmp?: string }): Fixture {
   const engineDir = given && path.resolve(given)
@@ -183,7 +179,6 @@ export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: { engineDir
   pkg.dreamteamer = {
     ...pkg.dreamteamer,
     namespaces: ["lab"],
-    git_modules: { [LAYER]: { url: "https://git.example/northwind/archive.git", ref: "main", records: ["projects"] } },
   }
   fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, "\t") + "\n")
   for (const [rel, text] of Object.entries(SOURCES)) {
@@ -191,23 +186,6 @@ export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: { engineDir
     fs.mkdirSync(path.dirname(file), { recursive: true })
     fs.writeFileSync(file, text)
   }
-  // the layer: another workspace's clone, holding one projects record, committed in its own repo
-  const layer = path.join(root, "git_modules", LAYER)
-  fs.mkdirSync(path.join(layer, "data", "projects"), { recursive: true })
-  fs.writeFileSync(
-    path.join(layer, "package.json"),
-    JSON.stringify({ name: LAYER, private: true, dreamteamer: { data_path: "data" } }, null, "\t") + "\n"
-  )
-  fs.writeFileSync(
-    path.join(layer, "data", "projects", "harbor-mutual-archive.project.md"),
-    "---\nname: Harbor Mutual archive\nstatus: paused\n---\nHeld by the layer.\n"
-  )
-  git(["init", "-q"], layer)
-  git(["config", "user.name", "Dana Oren"], layer)
-  git(["config", "user.email", "dana@northwind.example"], layer)
-  git(["add", "-A"], layer)
-  git(["commit", "-qm", "layer: one project"], layer)
-  fs.appendFileSync(path.join(root, ".gitignore"), "\ngit_modules/\n")
 
   must(dt("compile"), "compile")
   must(
@@ -230,7 +208,6 @@ export function makeFixture({ engineDir: given, tmp = os.tmpdir() }: { engineDir
   git(["commit", "-qm", "fixture: Northwind"])
   return {
     root,
-    layer,
     git,
     dt,
     head: () => git(["rev-parse", "HEAD"]),

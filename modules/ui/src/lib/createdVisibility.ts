@@ -1,10 +1,8 @@
 /**
  * A NEW RECORD STAYS VISIBLE IN THE LIST IT WAS CREATED FROM (design 2026-10-30, Q3-B).
  *
- * `add` writes the write root (or a module-owned list's clone). Since cr-vscode-004 a new record can be
- * added INTO a compiled layer too (the target choice, `dt add -w <layer>`'s act), but a list narrowed to
- * a layer that takes no new record still saves elsewhere — and such a record used to be INVISIBLE in
- * the list it came from.
+ * `add` writes the write root (or a module-owned list's clone), so a list narrowed to a source that takes
+ * no new record still saves elsewhere — and such a record used to be INVISIBLE in the list it came from.
  *
  * Two halves. BEFORE the save, the create form says where it saves (`SaveTarget.vue`, from the
  * selection the browse hands the create route as `?sources=`). AFTER it, the list WIDENS its

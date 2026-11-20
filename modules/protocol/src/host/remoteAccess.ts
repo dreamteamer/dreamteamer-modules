@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process"
 import { GIT_SYNC } from "./gitExec.ts"
 
 import type { ModuleRecord } from "./fsdata.ts"
-import type { SourceStackEntry, SourcesContext } from "./sources.ts"
+import type { SourceStackEntry } from "./sources.ts"
 
 export type Provider = "github" | "bitbucket"
 export type Level = "none" | "read" | "write" | "admin"
@@ -96,15 +96,13 @@ function safeReal(p: string): string {
 /**
  * ONE RULE for every entry: take the entry's folder, resolve it, find its git top-level. The workspace's
  * own top-level → the workspace's push url (with a note for a module entry); any other top-level → that
- * repo's OWN push url, so a linked clone is never judged as the workspace. A layer folder that is not its
- * own clone falls back to its declared `git_modules` url. An installed package has no target; an
- * uninstalled layer, or a repo with no remote, has a target with no url.
+ * repo's OWN push url, so a linked clone is never judged as the workspace. An installed package has no
+ * target; a repo with no remote has a target with no url.
  */
 export function accessTargets(
-  stack: { workspace: SourceStackEntry; layers: SourceStackEntry[]; modules: SourceStackEntry[] },
+  stack: { workspace: SourceStackEntry; modules: SourceStackEntry[] },
   root: string,
   modules: Array<Pick<ModuleRecord, "id" | "path">>,
-  gitModules: SourcesContext["gitModules"],
   git: Git = realGit
 ): AccessTarget[] {
   const wsTop = topLevel(root, git)
@@ -116,15 +114,6 @@ export function accessTargets(
       ? { source, url, ...(repoDir ? { repoDir } : {}), ...extra }
       : { source, reason: extra.reason ?? "no remote", ...(extra.note ? { note: extra.note } : {}) }
   out.push(at(stack.workspace.name, wsUrl, wsTop))
-  for (const l of stack.layers) {
-    if (!l.installed) {
-      out.push({ source: l.name, reason: "not installed" })
-      continue
-    }
-    const top = topLevel(path.join(root, l.repo), git)
-    if (top && top !== wsTop) out.push(at(l.name, pushUrl(top), top))
-    else out.push(at(l.name, gitModules[l.name]?.url, undefined))
-  }
   for (const m of stack.modules) {
     if (m.via === "package") continue
     const rec = modules.find(x => x.id === m.name)

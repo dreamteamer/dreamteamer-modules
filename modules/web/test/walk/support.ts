@@ -30,7 +30,7 @@ export const ENGINE_DIR = fs.realpathSync(
   process.env.DT_ENGINE_DIR ? path.resolve(process.env.DT_ENGINE_DIR) : path.join(REPO, "node_modules", "dreamteamer")
 )
 
-/** The contract's synthetic Northwind workspace (one git_modules layer holding a projects record). */
+/** The contract's synthetic Northwind workspace. */
 export async function northwind() {
   const { makeFixture } = await import(
     pathToFileURL(path.join(MODULES, "protocol", "lib", "contract", "fixture.ts")).href

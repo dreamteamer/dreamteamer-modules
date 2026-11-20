@@ -7,18 +7,9 @@ import { fileURLToPath } from "node:url"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 /** The workspace root: the nearest ancestor carrying package-lock.json (NOT package.json — a module folder carries one too). */
-// A GIT MODULE IS NOT A WORKSPACE, and the lockfile heuristic cannot tell on its own. The rule is
-// "walk up to the directory carrying package-lock.json, not package.json, because a module folder
-// carries one of those too" — but `npm install` in a module clone gives it a LOCKFILE as well, and a
-// reader running from `git_modules/perspective/skills/…` would resolve the CLONE as the workspace
-// and write records where `check` cannot see them and the next `git pull` destroys them.
-//
-// So the walk skips any candidate that sits directly inside a `git_modules/` folder: that is what a
-// clone IS, structurally, and no workspace is ever placed there.
 export const WORKSPACE_ROOT = (() => {
   for (let d = HERE; ; d = path.dirname(d)) {
-    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
-    if (!inGitModules && fs.existsSync(path.join(d, "package-lock.json"))) return d
+    if (fs.existsSync(path.join(d, "package-lock.json"))) return d
     if (path.dirname(d) === d) throw new Error("workspace root not found (no package-lock.json above " + HERE + ")")
   }
 })()

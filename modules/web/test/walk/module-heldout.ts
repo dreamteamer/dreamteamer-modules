@@ -24,14 +24,13 @@ const GRANT = {
 }
 fs.mkdirSync(path.dirname(settings), { recursive: true })
 fs.writeFileSync(settings, JSON.stringify({ "dreamteamer.moduleApps": GRANT }))
-const layer = path.join(f.root, "git_modules", "northwind-archive")
 const status = cwd =>
   execFileSync("git", ["status", "--porcelain", "--", "data"], { cwd, encoding: "utf8" })
     .trim()
     .split("\n")
     .filter(Boolean)
 const head = cwd => execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim()
-const before = { root: head(f.root), layer: head(layer), layerStatus: status(layer).join() }
+const before = { root: head(f.root) }
 const b = await browser()
 const s = await serve(f.root)
 const frameData = async (page, title, key = "done", ms = 30_000) => {
@@ -119,11 +118,10 @@ try {
       p[`h6patch_${k}`]?.slice(0, 100)
     )
   }
-  console.log("LAYER", p.h6layerpatch, p.h6layerdelete)
   ok(
-    /held by northwind-archive/.test(p.h6layerpatch ?? "") && /held by northwind-archive/.test(p.h6layerdelete ?? ""),
-    "h6: PATCH and DELETE of the layer-held own record are refused",
-    `${p.h6layerpatch?.slice(0, 80)} | ${p.h6layerdelete?.slice(0, 80)}`
+    /held by nobody/.test(p.h6strangerpatch ?? "") && /held by nobody/.test(p.h6strangerdelete ?? ""),
+    "h6: PATCH and DELETE of an own-collection record the module's home does not hold are refused",
+    `${p.h6strangerpatch?.slice(0, 80)} | ${p.h6strangerdelete?.slice(0, 80)}`
   )
   ok(
     /cannot pass target on a write/.test(p.h6target ?? ""),
@@ -308,10 +306,7 @@ try {
   await b.close()
   await s.stop()
   const changed = status(f.root)
-  ok(
-    head(f.root) === before.root && head(layer) === before.layer && status(layer).join() === before.layerStatus,
-    "h4/h6: HEAD of the HQ and the layer unchanged; the layer untouched"
-  )
+  ok(head(f.root) === before.root, "h4/h6: HEAD of the HQ unchanged")
   ok(
     changed.every(c => /pattern-items\/(pattern-one|h6-clean)\./.test(c)),
     "h3/h6: only pattern's granted save and clean create changed files",

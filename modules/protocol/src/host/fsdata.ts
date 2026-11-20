@@ -68,7 +68,6 @@ export interface ModuleRecord {
 export interface CollectionRoot {
   dir: string
   repo: string
-  layer?: string
 }
 export const EXT: Record<string, string> = { md: ".md", yaml: ".yaml", json: ".json" }
 const acc = () => engine().descriptor
@@ -178,11 +177,7 @@ export function loadDescriptors(root: string): Descriptor[] {
 export function collectionRoots(root: string, d: Descriptor): CollectionRoot[] {
   const s = acc().storageOf(d)
   const base = isRuntime(d) ? path.join(root, ".dreamteamer") : root
-  return s.roots.map((r: Record<string, any>) => ({
-    dir: path.resolve(base, r.path),
-    repo: r.repo ?? s.repo ?? ".",
-    ...(r.layer ? { layer: r.layer } : {}),
-  }))
+  return [{ dir: path.resolve(base, s.path), repo: s.repo ?? "." }]
 }
 export function collectionDir(root: string, d: Descriptor): string {
   return collectionRoots(root, d)[0].dir
@@ -288,9 +283,9 @@ function placedUnder(descriptors: Descriptor[], parent: Descriptor) {
   return descriptors.filter((c: Descriptor) => acc().storageOf(c).under?.collection === parent.name)
 }
 export function recordRoots(root: string, d: Descriptor, descriptors?: Descriptor[]): string[] {
-  const [own, ...layers] = collectionRoots(root, d).map(r => r.dir)
+  const own = collectionDir(root, d)
   const under = acc().storageOf(d).under
-  if (!under?.collection) return [own, ...layers]
+  if (!under?.collection) return [own]
   const parent = (descriptors ?? loadDescriptors(root)).find(x => x.name === under.collection)
   if (!parent) return [own]
   const parentDir = collectionDir(root, parent)
@@ -354,31 +349,6 @@ export function walkIds(dir: string, d: Descriptor): Map<string, string> {
     if (id !== undefined) out.set(id, f)
   }
   return out
-}
-export function duplicateIds(root: string, d: Descriptor): Map<string, CollectionRoot[]> {
-  return contestedIds(root, d).duplicates
-}
-export function contestedIds(
-  root: string,
-  d: Descriptor
-): {
-  duplicates: Map<string, CollectionRoot[]>
-} {
-  const roots = collectionRoots(root, d)
-  const duplicates = new Map()
-  if (roots.length < 2 || acc().storageOf(d).under?.collection) return { duplicates }
-  const seen = new Map<string, { r: CollectionRoot; file: string }[]>()
-  for (const r of roots) {
-    for (const [id, file] of walkIds(r.dir, d)) seen.set(id, [...(seen.get(id) ?? []), { r, file }])
-  }
-  for (const [id, claims] of seen) {
-    if (claims.length > 1)
-      duplicates.set(
-        id,
-        claims.map(c => c.r)
-      )
-  }
-  return { duplicates }
 }
 export function fieldVerbTargets(d: Descriptor): string[] {
   return Object.entries<any>(acc().fieldsOf(d))

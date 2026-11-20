@@ -489,9 +489,8 @@ async function runLanding(
 }
 
 /** Make the copy's compile see what the primary's does — the engine AND every installed module and
- *  extension. One symlink to the whole node_modules (gitignored, so it can never dirty the tree being
- *  landed), plus the same for each shadowing `git_modules/<name>` LINK; a real clone is per-checkout
- *  working state and is never linked. */
+ *  extension: one symlink to the whole node_modules (gitignored, so it can never dirty the tree being
+ *  landed). */
 export function mirrorModules(primary: string, temp: string): void {
   const src = path.join(primary, "node_modules")
   const at = path.join(temp, "node_modules")
@@ -500,23 +499,6 @@ export function mirrorModules(primary: string, temp: string): void {
       fs.symlinkSync(fs.realpathSync(src), at, "dir")
     } catch {
       /* a copy without modules still compiles its inline ones */
-    }
-  }
-  const shadows = path.join(primary, "git_modules")
-  for (const name of fs.existsSync(shadows) ? fs.readdirSync(shadows) : []) {
-    const from = path.join(shadows, name)
-    let realPath
-    try {
-      if (!fs.lstatSync(from).isSymbolicLink()) continue
-      realPath = fs.realpathSync(from)
-    } catch {
-      continue
-    }
-    try {
-      fs.mkdirSync(path.join(temp, "git_modules"), { recursive: true })
-      fs.symlinkSync(realPath, path.join(temp, "git_modules", name), "dir")
-    } catch {
-      /* the copy compiles with what it has */
     }
   }
 }

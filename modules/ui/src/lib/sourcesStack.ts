@@ -1,17 +1,15 @@
 /**
- * `GET /sources` — the stack of roots a workspace reads, top to bottom as `dt status` prints its `layers:` block:
- * the workspace's own data, each record layer, each module-owned collection under its module (host
+ * `GET /sources` — the stack of roots a workspace reads, top to bottom: the workspace's own data, then each
+ * module-owned collection under its module (host
  * `src/sources.ts`). The shapes the Schema tab's Sources page draws, and the one sum it shows per root.
  */
 import type { SourceAccess, SourceVia } from "../api/types.ts"
 
 export interface StackEntry {
   name: string
-  kind: "own" | "layer" | "module"
+  kind: "own" | "module"
   repo: string
   installed: boolean
-  url?: string
-  record?: string
   /** The root's class and whether a write lands there (cr-vscode-004) — the source mark's glyph. */
   via?: SourceVia
   access?: SourceAccess
@@ -21,7 +19,6 @@ export interface StackEntry {
 
 export interface SourceStack {
   workspace: StackEntry
-  layers: StackEntry[]
   modules: StackEntry[]
 }
 

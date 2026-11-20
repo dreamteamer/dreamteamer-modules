@@ -1,6 +1,6 @@
 // Tier 1 — where a view can land, as data (cr-vscode-010). The Save as… form and a ui-view's record page
 // pick the module in ONE dropdown: the targets carry what both need (the module's id on every row, its
-// path, whether it is linked, which row is the workspace's), and the pure helpers decide what a choice
+// path, which row is the workspace's), and the pure helpers decide what a choice
 // reads, what its hover and the line under the control say, and the one sentence for the npm-installed
 // modules. Synthetic manifest only.
 import { test } from "node:test"
@@ -16,15 +16,9 @@ import {
 } from "../src/lib/viewModuleTargets.ts"
 
 const inline = (id: string) => ({ id, title: id, location: "modules", path: `modules/${id}` })
-const linked = (id: string) => ({
-  id,
-  title: id,
-  location: "git_modules",
-  path: `git_modules/northwind-modules/modules/${id}`,
-})
 const npm = (id: string) => ({ id, title: id, location: "node_modules", path: `node_modules/@harbor/${id}` })
 
-const LINKED = [
+const MORE = [
   "claims",
   "claims-archive",
   "billing",
@@ -42,32 +36,25 @@ const NPM = ["core", "harbor-rnd", "routines", "search", "carriers"]
 const MANIFEST = [
   inline("reports"),
   npm("core"),
-  linked("claims"),
+  inline("claims"),
   inline("default"),
-  ...LINKED.slice(1).map(linked),
+  ...MORE.slice(1).map(inline),
   inline("ledger"),
   ...NPM.slice(1).map(npm),
 ]
 
 const targets = viewModuleTargets(MANIFEST, "default")
 
-test("every row carries the module's id, its path, whether it is linked and whether it is the workspace's", () => {
+test("every row carries the module's id, its path and whether it is the workspace's", () => {
   const ws = targets[0]!
   assert.equal(ws.id, null, "the workspace row is still the no-selector row")
   assert.equal(ws.name, "default", "but it names the workspace module")
   assert.equal(ws.path, "modules/default")
   assert.equal(ws.workspace, true)
-  assert.equal(ws.linked, false)
   const claims = targets.find(t => t.id === "claims")!
-  assert.deepEqual(
-    [claims.name, claims.path, claims.linked, claims.workspace],
-    ["claims", "git_modules/northwind-modules/modules/claims", true, false]
-  )
+  assert.deepEqual([claims.name, claims.path, claims.workspace], ["claims", "modules/claims", false])
   const reports = targets.find(t => t.id === "reports")!
-  assert.deepEqual(
-    [reports.name, reports.path, reports.linked, reports.workspace],
-    ["reports", "modules/reports", false, false]
-  )
+  assert.deepEqual([reports.name, reports.path, reports.workspace], ["reports", "modules/reports", false])
   assert.equal(targets.find(t => t.id === "carriers")!.locked, true)
 })
 
@@ -75,18 +62,18 @@ test("moduleChoices keeps the order, offers the writable modules and splits the 
   const { choices, locked } = moduleChoices(targets)
   assert.deepEqual(
     choices.map(c => c.value),
-    [null, "reports", "claims", ...LINKED.slice(1), "ledger"]
+    [null, "reports", "claims", ...MORE.slice(1), "ledger"]
   )
   assert.equal(choices.length, 14)
   assert.deepEqual(locked.map(t => t.id).sort(), [...NPM].sort())
 })
 
-test('the hints: the workspace module beside "Workspace module", "linked" on a linked module, nothing on an inline one', () => {
+test('the hints: the workspace module beside "Workspace module", nothing on any other module', () => {
   const { choices } = moduleChoices(targets)
   const by = (v: string | null) => choices.find(c => c.value === v)!
   assert.equal(by(null).text, "Workspace module")
   assert.equal(by(null).hint, "default")
-  assert.equal(by("claims").hint, "linked")
+  assert.equal(by("claims").hint, undefined)
   assert.equal(by("reports").hint, undefined)
   for (const c of choices) {
     assert.doesNotMatch(`${c.text} ${c.hint ?? ""}`, /\//, `no path on the choice itself: ${c.text}`)
@@ -99,12 +86,9 @@ test('a workspace module whose id sits inside "Workspace module" is still named 
   assert.equal(moduleChoices(t).choices[0]!.hint, "module")
 })
 
-test("whereOf: the module, linked when it is, and its path — never blank", () => {
+test("whereOf: the module and its path — never blank", () => {
   assert.equal(whereOf(targets.find(t => t.id === "reports")!), "reports · modules/reports")
-  assert.equal(
-    whereOf(targets.find(t => t.id === "claims")!),
-    "claims · linked · git_modules/northwind-modules/modules/claims"
-  )
+  assert.equal(whereOf(targets.find(t => t.id === "claims")!), "claims · modules/claims")
   assert.equal(whereOf(targets[0]!), "default · modules/default")
   const none = viewModuleTargets([inline("reports")], null)
   assert.equal(none[0]!.name, "")

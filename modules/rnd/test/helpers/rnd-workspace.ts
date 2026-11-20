@@ -21,43 +21,20 @@ export function rndWorkspace() {
   fs.cpSync(base, root, { recursive: true, verbatimSymlinks: true })
   return root
 }
-/** A reader workspace with one record layer, `git_modules/lay` — itself an rnd workspace, so `dt check` run
- *  in it with `--workspace` is that layer's own check. `layerStage: false` removes the stage field from the
- *  layer's own rnd (its copy under modules/rnd) and recompiles it: a layer still on an rnd without the field. */
-export function layeredWorkspace({
-  layerStage = true,
-  records = ["rnd/change-requests", "rnd/products", "rnd/design-docs", "rnd/implementation-plans", "rnd/tests"],
-} = {}) {
-  const reader = rndWorkspace()
-  const layer = path.join(reader, "git_modules", "lay")
-  fs.mkdirSync(path.dirname(layer), { recursive: true })
-  fs.cpSync(rndWorkspace(), layer, { recursive: true, verbatimSymlinks: true })
-  if (!layerStage) {
-    const f = path.join(layer, "modules", "rnd", "collections", "rnd", "change-requests.collection.yaml")
-    const text = fs
-      .readFileSync(f, "utf8")
-      .replace(/\n  stage:\n(?:    .*\n|      .*\n)+/, "\n")
-      .replace(/\n      - stage\n/, "\n")
-    if (/^  stage:/m.test(text)) throw new Error("layeredWorkspace: could not remove stage from the layer's descriptor")
-    fs.writeFileSync(f, text)
-    const c = run(layer, ["compile", "--workspace", layer])
-    if (c.status !== 0) throw new Error(`layer compile failed:\n${c.stderr}\n${c.stdout}`)
-  }
-  const pkgFile = path.join(reader, "package.json")
-  const pkg = JSON.parse(fs.readFileSync(pkgFile, "utf8"))
-  pkg.dreamteamer = {
-    ...(pkg.dreamteamer ?? {}),
-    git_modules: { lay: { url: "https://example.invalid/lay.git", ref: "main", records } },
-  }
-  fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, "\t") + "\n")
-  const c = run(reader, ["compile"])
-  if (c.status !== 0) throw new Error(`reader compile failed:\n${c.stderr}\n${c.stdout}`)
-  return { reader, layer }
-}
-
-/** The layer's own `dt` — run inside it, pinned to it. */
-export function runIn(layer, args) {
-  return run(layer, [...args, "--workspace", layer])
+/** An rnd workspace whose own rnd has no `stage` field (its copy under modules/rnd, recompiled): a workspace
+ *  still on an rnd that predates the field. */
+export function stagelessWorkspace() {
+  const root = rndWorkspace()
+  const f = path.join(root, "modules", "rnd", "collections", "rnd", "change-requests.collection.yaml")
+  const text = fs
+    .readFileSync(f, "utf8")
+    .replace(/\n  stage:\n(?:    .*\n|      .*\n)+/, "\n")
+    .replace(/\n      - stage\n/, "\n")
+  if (/^  stage:/m.test(text)) throw new Error("stagelessWorkspace: could not remove stage from the descriptor")
+  fs.writeFileSync(f, text)
+  const c = run(root, ["compile"])
+  if (c.status !== 0) throw new Error(`compile failed:\n${c.stderr}\n${c.stdout}`)
+  return root
 }
 
 export function cleanupAll() {

@@ -194,7 +194,7 @@ function expand(hits: { collection: string; file: string }[], root: string, argv
 }
 
 // ── run as a script ──────────────────────────────────────────────────────────────────────────────
-// Both sides realpath'd: reached through a symlink (`node_modules/.bin`, a `git_modules/` clone) the
+// Both sides realpath'd: reached through a symlink (`node_modules/.bin`, an `npm link`) the
 // invoked path and the resolved one differ, and a guard that never fires reads as a clean run.
 const __isMain = () => {
   if (!process.argv[1]) return false

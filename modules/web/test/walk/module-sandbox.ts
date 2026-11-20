@@ -26,8 +26,8 @@ export const PROBE = `export default ({ registerApp, registerEdit, registerKindD
 		out('info', await st('/api/info'));
 		out('ownread', await st('/api/collections/projects/records?limit=100'));
 		out('nonroute', await st('/api/records-batch'));
-		out('layerpatch', await st('/api/collections/projects/records/harbor-mutual-archive', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'active' }) }));
-		out('layerdelete', await st('/api/collections/projects/records/harbor-mutual-archive', { method: 'DELETE' }));
+		out('patch', await st('/api/collections/projects/records/no-such-project', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'active' }) }));
+		out('delete', await st('/api/collections/projects/records/no-such-project', { method: 'DELETE' }));
 		try { await fetch(location.protocol + '//127.0.0.1:9/api/info'); out('absolute', 'reached'); } catch { out('absolute', 'failed'); }
 		try { out('cookie', JSON.stringify(document.cookie)); } catch { out('cookie', 'threw'); }
 		try { localStorage.length; out('storage', 'readable'); } catch { out('storage', 'threw'); }
@@ -56,8 +56,7 @@ ok(f.dt("compile").status === 0, "dt compile stages the probe")
 const git = cwd =>
   execFileSync("git", ["status", "--porcelain"], { cwd, encoding: "utf8" }) +
   execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" })
-const layer = path.join(f.root, "git_modules", "northwind-archive")
-const before = [git(f.root), git(layer)]
+const before = git(f.root)
 const b = await browser()
 async function probeRun(label) {
   const s = await serve(f.root)
@@ -144,9 +143,9 @@ try {
   )
   ok(Number(d.regflood) > 0, "line 10: the hidden registry frame is bounded too", d.regflood)
   ok(
-    d.layerpatch?.startsWith("403:") && d.layerdelete?.startsWith("403:"),
+    d.patch?.startsWith("403:") && d.delete?.startsWith("403:"),
     "line 1: no grant, no PATCH or DELETE of any record",
-    `${d.layerpatch?.slice(0, 60)} | ${d.layerdelete?.slice(0, 60)}`
+    `${d.patch?.slice(0, 60)} | ${d.delete?.slice(0, 60)}`
   )
   ok(
     r.frameRequests.length === 0,
@@ -163,10 +162,7 @@ try {
     "line 1: registering input or a string kind default replaces no built-in editor"
   )
   await r.s.stop()
-  ok(
-    git(f.root) === before[0] && git(layer) === before[1],
-    "line 1: the HQ and the layer are unchanged (status and HEAD)"
-  )
+  ok(git(f.root) === before, "line 1: the HQ is unchanged (status and HEAD)")
 
   fs.mkdirSync(path.join(f.root, ".vscode"), { recursive: true })
   fs.writeFileSync(
@@ -177,14 +173,14 @@ try {
   ok(g.data.ownwrite?.startsWith("200:"), "line 4: with a grant its own-collection write lands", g.data.ownwrite)
   ok(g.data.commit?.startsWith("403:"), "line 1: still no commit with a grant", g.data.commit)
   ok(
-    g.data.layerpatch?.startsWith("403:") && /held by northwind-archive/.test(g.data.layerpatch),
-    "line 8: with a grant, a PATCH of a record the layer holds is refused",
-    g.data.layerpatch
+    g.data.patch?.startsWith("403:") && /held by nobody/.test(g.data.patch),
+    "line 8: with a grant, a PATCH of a record the module's home does not hold is refused",
+    g.data.patch
   )
   ok(
-    g.data.layerdelete?.startsWith("403:") && /held by northwind-archive/.test(g.data.layerdelete),
-    "line 8: with a grant, a DELETE of a record the layer holds is refused",
-    g.data.layerdelete
+    g.data.delete?.startsWith("403:") && /held by nobody/.test(g.data.delete),
+    "line 8: with a grant, a DELETE of a record the module's home does not hold is refused",
+    g.data.delete
   )
   await g.s.stop()
   const changed = execFileSync("git", ["status", "--porcelain", "--", "data"], { cwd: f.root, encoding: "utf8" })
@@ -196,7 +192,6 @@ try {
     "line 4: git shows one new projects record in the workspace (the module home)",
     JSON.stringify(changed)
   )
-  ok(git(layer) === before[1], "line 8: the layer is untouched", "")
 } finally {
   await b.close()
   f.cleanup()

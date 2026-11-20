@@ -741,7 +741,7 @@ export function unknownNavNames(
  * module or group folder `{ folder: <label as drawn>, icon?, items }`; a namespace folder `{ namespace, icon?, items }`;
  * a folder's rows come before its subfolders, as the legacy tree draws them. A navHidden name matching a top-level
  * row puts it in `hidden`; matching a top-level folder, that entry gets `hidden: true` — the legacy tree hid nothing
- * deeper, so nothing deeper is hidden. The layers entry is dropped: layers draw after the tree.
+ * deeper, so nothing deeper is hidden.
  * @param {Array} entries  legacyTree's top level, computed with no navHidden
  * @param {{ navHidden?: unknown }} settings
  * @param {{ titleOf?: Map<string, string|undefined>, iconOf?: (folder) => string|undefined }} ctx

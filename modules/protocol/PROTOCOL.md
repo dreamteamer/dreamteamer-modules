@@ -56,10 +56,9 @@ keys the host computes, each prefixed `$` (or named as below) so a write never p
 | `created` | the record's `created`, or the engine's derivation (the id's date, or the first commit) |
 | `last-modified`, `last_modified` | the last commit's date touching the record's file |
 | `$last-modified-by`, `$last-commit-message`, `$created-by` | the last commit's author and subject; the first commit's author |
-| `$source`, `$source-kind` | the NAME of the root the record was read from, and its kind (`own`, `layer`, `module`) |
+| `$source`, `$source-kind` | the NAME of the root the record was read from, and its kind (`own`, `module`) |
 | `$module` | the module that owns the record's collection or root |
 | `$repo`, `$dirty`, `$ahead` | the repository holding the file (workspace-relative, `.` the workspace), whether the file has uncommitted changes, and how many commits that repository holds that no remote has |
-| `$duplicates` | other roots holding the same id (the first root wins) |
 
 ## Routes
 
@@ -96,9 +95,8 @@ installed, count, access). `200 { collections: [row, ...], … }`.
 
 Level: read
 
-The stack of roots, top to bottom as `dt status` prints its `layers:` block. `200 { workspace, layers: [...],
-modules: [...] }`, each `{ name, kind, repo, installed, via, access, collections: [{ collection, count }],
-record? }` — `record` is the `repos/<id>` whose `url` matches the root's remote, when one does.
+The stack of roots, top to bottom: the workspace, then each module holding records. `200 { workspace,
+modules: [...] }`, each `{ name, kind, repo, installed, via, access, collections: [{ collection, count }] }`.
 
 ### GET /sources/access
 
@@ -140,22 +138,18 @@ Level: read
 The navigation the editor draws as its tree, as data, so a host without a native tree draws the same
 folders. `200 [NavNode, ...]`, `NavNode = { kind, key, label, icon?, route?, marks?, description?, tooltip?,
 target?, notice?, children? }`, `kind` one of `workspace`, `folder`, `namespace`, `collection`, `view`,
-`layers`, `layer`, `layer-group`, `layer-collection`, `layer-note`, `message`. Every `folder`, `namespace` and
+`message`. Every `folder`, `namespace` and
 `collection` node carries `target`, the NavTarget a host sends back in a `PATCH /nav` op; a key is never decoded.
 
 The tree is the workspace's `nav.yaml` (see *The nav document*): its entries in order, then what it does not
-place — rows by title, then namespaces — and the layers folder last. With no `nav.yaml` and none of the old
+place — rows by title, then namespaces. With no `nav.yaml` and none of the old
 settings `dreamteamer.navGroups`, `dreamteamer.navOrder`, `dreamteamer.navHidden`, the tree is flat; with no
 `nav.yaml` and one of them set, it is the tree those settings drew, until they are migrated. A `nav.yaml` that
 cannot be read — not YAML, not a mapping, `tree` or `hidden` not a list, a folder that contains itself through a
 YAML alias, a directory — draws the flat tree and puts the reason on the workspace node's `notice` — never a 500.
 One that reads but holds entries of none of the four shapes (`null`, `{ folder: [1, 2] }`, a non-name in `hidden`)
 draws the rest and names each skipped entry on the `notice`.
-`dreamteamer.layersFolder` still names the layers folder. A record layer draws the same way from its own clone:
-by the `nav.yaml` in `git_modules/<key>`, over the rows it holds (its folders and namespaces as `layer-group`
-nodes, keyed `l/<key>/<the key it would have in that workspace>`), else as its own old settings drew it; an
-unreadable one draws the layer flat with the reason on the `layer` node's `notice`. A list is narrowed to some sources by an ordinary filter
-chip (`$source`), never by a host-wide scope.
+A list is narrowed to some sources by an ordinary filter chip (`$source`), never by a host-wide scope.
 
 ### PUT /nav
 
@@ -253,8 +247,8 @@ rows the filter leaves before paging. Rows carry the computed keys above.
 
 Level: edit
 
-Create a record. Body: the fields, plus `id` for an explicit id. Query `target=<source name>` chooses which
-root a new record is written to (a layer that takes writes); absent, the collection's write root. A system
+Create a record. Body: the fields, plus `id` for an explicit id. Query `target=<source name>` names the
+root a new record is written to; only the collection's write root takes one, and it is the default. A system
 collection (`collections`, `modules`, `skills`, `ui-views`, …) is written through its schema operation
 instead — see *System writes*. `200 { id, path, source }`; a refusal is `400` with the engine's sentence.
 
@@ -269,8 +263,7 @@ One record. `200 { id, fields: { …, computed keys }, path }`.
 Level: edit
 
 Set fields. Body: the fields to change; echoed computed keys are ignored, never written. The record is
-validated exactly as `dt set` validates it; a refusal is `400` and nothing is written. A record held by a
-`git_modules` layer is written in that layer's clone. `200 { id }`.
+validated exactly as `dt set` validates it; a refusal is `400` and nothing is written. `200 { id }`.
 
 ### DELETE /collections/:collection/records/*id
 
@@ -299,8 +292,7 @@ field or the neighbour is not in the order. `200 { id }`.
 Level: admin
 
 Rename a record (or, on a system collection, the entity). Body `{ old, new }`. Every reference to it is
-rewritten. A record held by a `git_modules` layer is refused: `… is held by layer <name> … a layer's record
-is renamed in its own workspace, never from here. nothing was renamed.` `200` the engine's rename result.
+rewritten. `200` the engine's rename result.
 
 ### POST /collections/:collection/records-revert/*id
 
@@ -418,8 +410,7 @@ dispatches to the engine's schema operation, which writes the SOURCE, compiles a
 
 Before every compile-gated write the host re-opens the workspace, so a write after the declared extensions
 changed compiles against what is declared now; a workspace that will not open is `409` and nothing is
-written. A successful system write's result carries `commits`, including a commit in another repository
-for a module that lives in a `git_modules` clone.
+written. A successful system write's result carries `commits`.
 
 ## The nav document
 

@@ -1,8 +1,7 @@
 /**
  * WHERE A RECORD COMES FROM, AND ITS REPO STATE — the record page's sub-header, beside the commit line:
  *
- *     ● project-a layer · ahead 1 · uncommitted
- *     ● org module
+ *     ● org module · ahead 1 · uncommitted
  *     ● my-hq · uncommitted
  *     env folder · never committed
  *
@@ -21,7 +20,7 @@ export const REPO_FIELD = "$repo"
 export const DIRTY_FIELD = "$dirty"
 export const AHEAD_FIELD = "$ahead"
 
-export type OriginKind = "own" | "layer" | "module" | "env"
+export type OriginKind = "own" | "module" | "env"
 
 export interface RecordOrigin {
   /** The root's name — the source mark's word. Null for an env-pointed root, which is a folder on this
@@ -55,17 +54,12 @@ export function recordOrigin(record: Record<string, unknown> | null | undefined)
     }
   }
   if (!name) return null
-  const kind: OriginKind = sourceKind === "layer" || sourceKind === "module" ? sourceKind : "own"
+  const kind: OriginKind = sourceKind === "module" ? "module" : "own"
   const state: string[] = []
   const ahead = record[AHEAD_FIELD]
   if (typeof ahead === "number" && ahead > 0) state.push(`ahead ${ahead}`)
   if (record[DIRTY_FIELD] === true) state.push("uncommitted")
-  const where =
-    kind === "layer"
-      ? `Read from the record layer ${name}`
-      : kind === "module"
-        ? `Read from the module ${name}'s shared list`
-        : `Read from ${name}, this workspace`
+  const where = kind === "module" ? `Read from the module ${name}'s shared list` : `Read from ${name}, this workspace`
   const repoWords = typeof repo === "string" ? ` — committed in ${repo === "." ? "this workspace's repo" : repo}` : ""
   const stateWords = [
     typeof ahead === "number" && ahead > 0 ? `${ahead} commit${ahead === 1 ? "" : "s"} not pushed` : "",
@@ -84,15 +78,15 @@ export function recordOrigin(record: Record<string, unknown> | null | undefined)
 
 /** The kind's word after the mark — none for the workspace's own root, which needs no qualifier. */
 export function originKindWord(kind: OriginKind): string {
-  return kind === "layer" ? "layer" : kind === "module" ? "module" : kind === "env" ? "env folder" : ""
+  return kind === "module" ? "module" : kind === "env" ? "env folder" : ""
 }
 
 /**
- * The CLASS word after the mark, when the host said what the root is (cr-vscode-004): `layer`,
+ * The CLASS word after the mark, when the host said what the root is (cr-vscode-004):
  * `linked clone`, `package` — and none for the workspace's own root. A host that did not say falls back
  * to the kind's word, so the line never loses a word it used to have.
  */
 export function originClassWord(kind: OriginKind, via: SourceVia | undefined): string {
   if (kind === "env" || !via) return originKindWord(kind)
-  return via === "layer" ? "layer" : via === "clone" ? "linked clone" : via === "package" ? "package" : ""
+  return via === "clone" ? "linked clone" : via === "package" ? "package" : ""
 }

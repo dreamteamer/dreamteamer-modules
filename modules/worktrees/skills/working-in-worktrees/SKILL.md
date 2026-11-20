@@ -26,15 +26,13 @@ looking at is left byte-identical while you decide.
 ## making one ready
 
 `dt worktree add` runs the engine's `dt install` in the new tree. What that install does (linking
-`.env`, local assets, git modules, the compile) is the engine's; see its `using-dreamteamer` skill.
+`.env`, local assets, the compile) is the engine's; see its `using-dreamteamer` skill.
 
 **A new tree loads the same engine and the same extensions as the tree it was cut from.** Every
 DIRECT dependency that is a symlink under `node_modules/` here — the engine, this package, anything
-`npm link`ed — is mirrored as the same link into the new tree, and so is every symlinked
-`git_modules/<name>` shadow. Without that the new tree would compile with a different compiler, or
+`npm link`ed — is mirrored as the same link into the new tree. Without that the new tree would compile with a different compiler, or
 without this extension at all — and a tree holding `proofs/` fails compile when the proofs module
-is not mirrored with it. Real directories are left to `dt install`; a real `git_modules/` clone is
-per-checkout working state and is never linked.
+is not mirrored with it. Real directories are left to `dt install`.
 
 ## the four subcommands
 

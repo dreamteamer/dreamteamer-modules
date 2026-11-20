@@ -24,7 +24,7 @@ const own: SourceEntry = {
   via: "own",
   access: "write",
 } as SourceEntry
-const layer: SourceEntry = { name: "archive", kind: "layer", installed: true, count: 1, via: "layer" } as SourceEntry
+const pkg: SourceEntry = { name: "archive", kind: "module", installed: true, count: 1, via: "package" } as SourceEntry
 
 test("the default columns lead with the title, then the status, then short scalars", () => {
   assert.deepEqual(
@@ -42,15 +42,15 @@ test("a browse offers what some surface draws, plus the computed fields", () => 
   assert.ok(!offered.includes("hidden"))
   assert.ok(offered.includes("name") && offered.includes("$last-modified-by"))
   assert.ok(!offered.includes("$source"))
-  assert.ok(browseFields(rows, "tasks", [own, layer]).some(f => f.field === "$source"))
-  assert.deepEqual(browseFields([], "tasks", [own, layer]), [])
+  assert.ok(browseFields(rows, "tasks", [own, pkg]).some(f => f.field === "$source"))
+  assert.deepEqual(browseFields([], "tasks", [own, pkg]), [])
 })
 
 test("the Source column joins the heuristic on a mixed list; a seed's columns stay as written", () => {
-  const offered = browseFields(rows, "tasks", [own, layer])
-  assert.ok(seedColumns(null, offered, [own, layer]).includes("$source"))
+  const offered = browseFields(rows, "tasks", [own, pkg])
+  assert.ok(seedColumns(null, offered, [own, pkg]).includes("$source"))
   assert.ok(!seedColumns(null, offered, [own]).includes("$source"))
-  assert.deepEqual(seedColumns(["due", "name"], offered, [own, layer]), ["due", "name"])
+  assert.deepEqual(seedColumns(["due", "name"], offered, [own, pkg]), ["due", "name"])
 })
 
 test("a drag moves one column; a header click goes ascending, then descending", () => {

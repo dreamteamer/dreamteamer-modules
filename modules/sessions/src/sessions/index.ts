@@ -1,7 +1,7 @@
 // the sessions extension — what src/activate.js activates (until core 0.12.0 it was core's own half of core's
 // entry, merged there with the files origin's). It contributes the `session` verb (bind · end · send), the sessions a record was
 // worked on in `dt next`, and the RETIRED session-bindings kind: core 0.9.0 removed live sessions, so a
-// session-bindings folder a layer or an older package still ships compiles with one line and is ignored.
+// session-bindings folder an older package still ships compiles with one line and is ignored.
 import type { CompileDraft, Contribution } from "dreamteamer"
 import { sessionCommand, nextNotes, SESSION_USAGE, type Api } from "./cli.ts"
 

@@ -74,7 +74,7 @@ export function moduleScope(
 export function repoName(repo: string, workspace: string): string {
   if (repo === ".") return workspace
   const parts = repo.split("/")
-  return parts[0] === "git_modules" && parts[1] ? parts[1] : parts[parts.length - 1]
+  return parts[parts.length - 1]
 }
 export function parseActivityLog(
   out: string,

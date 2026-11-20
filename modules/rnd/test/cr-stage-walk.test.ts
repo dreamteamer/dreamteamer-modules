@@ -1,14 +1,12 @@
 // THE WALK — a change request moved from filed to done by the lifecycle, each step run with the command
 // line its skill spells (extracted from the skill text, so a skill edit that breaks the walk breaks this
 // test), and after every step the request shows the right column and `dt check` has no stage line. Then
-// the send-back, and the two layer cases: a layer on an rnd without the field is never written a stage
-// (rule (a), and the retry when its home refuses it); a request filed from a reader into a layer that
-// carries stages lands in a column and moves with the lifecycle.
+// the send-back.
 import { test, describe, after } from "node:test"
 import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
-import { rndWorkspace, layeredWorkspace, runIn, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
+import { rndWorkspace, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
 import { seedStates, settleAll, T } from "./helpers/cr-stage-fixtures.ts"
 
 after(() => cleanupAll())
@@ -29,11 +27,9 @@ const fields = (root, id, w = []) => {
   assert.equal(r.status, 0, r.stderr + r.stdout)
   return JSON.parse(r.stdout)
 }
-/** Run a skill's line on a request: placeholders filled, `<each existing>` expanded from the record, and
- *  rule (a) applied — `stage=` dropped unless the request carries one or lives in the workspace's own root. */
+/** Run a skill's line on a request: placeholders filled, `<each existing>` expanded from the record. */
 function apply(root, id, cmd, { w = [], runner = run } = {}) {
   const f = fields(root, id, w)
-  const keepStage = Boolean(f.stage) || f.$repo === "."
   const existing = (f.tags ?? []).filter(t => !new RegExp(`tags=${t}\\b`).test(cmd.replace("tags=<each existing>", "")))
   let c = cmd
     .replace(/^dt set rnd\/change-requests\/<(?:id|cr)> /, "")
@@ -41,9 +37,7 @@ function apply(root, id, cmd, { w = [], runner = run } = {}) {
     .replaceAll("<now>", T)
     .replaceAll("<published_on>", T)
     .replaceAll("<you>", "agents/qa-manager")
-  let args = c.split(/\s+/).filter(Boolean)
-  if (!keepStage) args = args.filter(a => !a.startsWith("stage="))
-  if (!args.length) return args // the step's only write was the stage, and rule (a) left it out
+  const args = c.split(/\s+/).filter(Boolean)
   const r = runner(root, ["set", `rnd/change-requests/${id}`, ...args, ...w])
   assert.equal(r.status, 0, `${c}\n${r.stderr}${r.stdout}`)
   return args
@@ -195,104 +189,5 @@ describe("a request walked by the lifecycle, design to done", () => {
     // live — the live acceptance review
     apply(root, id, line("recording-reviews", "stage=done"))
     ok("done", "live")
-  })
-})
-
-describe("across layers", () => {
-  test("a layer on an rnd without the field: two steps from the reader write no stage into it, and its home refuses one", () => {
-    const { reader, layer } = layeredWorkspace({ layerStage: false })
-    seedStates(layer, { prefix: "l", states: ["design"], stageOf: () => undefined })
-    settleAll(reader)
-    const w = []
-    // designed, from the reader — rule (a): no stage on the request, and it is the layer's → leave it out
-    assert.equal(
-      run(reader, ["set", "rnd/change-requests/l-design", "design_docs=rnd/design-docs/2026-01-01--dd-draft"]).status,
-      0
-    )
-    const a1 = apply(reader, "l-design", line("rnd-design", "stage=design-review"), { w })
-    assert.ok(!a1.some(a => a.startsWith("stage=")), "stage left out")
-    // the design approved
-    assert.equal(run(reader, ["set", "rnd/design-docs/2026-01-01--dd-draft", "status=active"]).status, 0)
-    apply(reader, "l-design", line("recording-reviews", "stage=acceptance"), { w })
-    const file = fs.readFileSync(path.join(layer, "data/rnd/change-requests/l-design.change-request.md"), "utf8")
-    assert.doesNotMatch(file, /^stage:/m, "no stage in the layer")
-    const own = runIn(layer, ["check"])
-    assert.doesNotMatch(own.stdout + own.stderr, /unknown field "stage"/)
-    // run from the layer's own workspace, a write carrying stage is refused, and the retry without it lands
-    const refused = runIn(layer, ["set", "rnd/change-requests/l-design", "priority=high", "stage=acceptance"])
-    assert.notEqual(refused.status, 0)
-    assert.match(refused.stdout + refused.stderr, /stage/)
-    assert.doesNotMatch(
-      fs.readFileSync(path.join(layer, "data/rnd/change-requests/l-design.change-request.md"), "utf8"),
-      /^priority:/m,
-      "nothing written by the refused set"
-    )
-    assert.match(skill("recording-reviews"), /run the same `dt set` again without `stage`/)
-    assert.equal(runIn(layer, ["set", "rnd/change-requests/l-design", "priority=high"]).status, 0)
-    assert.match(
-      fs.readFileSync(path.join(layer, "data/rnd/change-requests/l-design.change-request.md"), "utf8"),
-      /^priority: high$/m,
-      "the retry lands the rest of the step"
-    )
-  })
-
-  test("a layer that carries stages: a request filed from the reader lands in a column and moves with the lifecycle", () => {
-    const { reader, layer } = layeredWorkspace({ layerStage: true })
-    seedStates(layer, { prefix: "l", states: ["plan"], stageOf: s => s })
-    settleAll(reader)
-    // the filing read: the layer's requests carry a stage → file with --stage
-    const read = run(reader, [
-      "list",
-      "rnd/change-requests",
-      "-w",
-      "lay",
-      "--where",
-      '{"stage":{"_nempty":true}}',
-      "--json",
-    ])
-    assert.equal(read.status, 0, read.stderr)
-    assert.ok(JSON.parse(read.stdout).length >= 1, "the layer's requests carry a stage")
-    assert.match(
-      skill("rnd-change-request"),
-      /dt list rnd\/change-requests -w <layer> --where '\{"stage":\{"_nempty":true\}\}'/
-    )
-    const add = run(reader, [
-      "add",
-      "rnd/change-requests",
-      "-w",
-      "lay",
-      "--key",
-      "l-new",
-      "--name",
-      "new",
-      "--products",
-      "rnd/products/p",
-      "--acceptance",
-      "a person sees it",
-      "--stage",
-      "design",
-    ])
-    assert.equal(add.status, 0, add.stderr + add.stdout)
-    assert.ok(
-      fs.existsSync(path.join(layer, "data/rnd/change-requests/l-new.change-request.md")),
-      "filed into the layer"
-    )
-    assert.equal(stageOf(reader, "l-new"), "design")
-    // two steps from the reader: the request carries a stage, so rule (a) writes it
-    put(layer, "data/rnd/design-docs/2026-01-01--new.design-doc.md", "---\nname: new\nstatus: draft\n---\n")
-    assert.equal(
-      run(reader, ["set", "rnd/change-requests/l-new", "design_docs=rnd/design-docs/2026-01-01--new"]).status,
-      0
-    )
-    apply(reader, "l-new", line("rnd-design", "stage=design-review"))
-    assert.equal(stageOf(reader, "l-new"), "design-review")
-    assert.equal(run(reader, ["set", "rnd/design-docs/2026-01-01--new", "status=active"]).status, 0)
-    apply(reader, "l-new", line("recording-reviews", "stage=acceptance"))
-    assert.equal(stageOf(reader, "l-new"), "acceptance")
-    const own = runIn(layer, ["check"])
-    assert.deepEqual(stageLines(own.stdout), [], own.stdout)
-    assert.doesNotMatch(own.stdout + own.stderr, /unknown field/)
-    const r = run(reader, ["check"])
-    assert.deepEqual(stageLines(r.stdout), [], r.stdout)
   })
 })

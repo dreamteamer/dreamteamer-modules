@@ -9,19 +9,23 @@ import { emptyFilterGroup, type FilterGroup } from "../src/lib/filterQuery.ts"
 import { selectedSources, withSourceSelection } from "../src/lib/sources.ts"
 import { fieldRow } from "./field-rows.ts"
 
-test("recordOrigin: a layer record, one commit not pushed, edited on disk", () => {
+test("recordOrigin: a module record, one commit not pushed, edited on disk", () => {
   const o = recordOrigin({
     $source: "project-a",
-    "$source-kind": "layer",
-    $repo: "git_modules/project-a",
+    "$source-kind": "module",
+    $repo: "modules/project-a",
     $dirty: true,
     $ahead: 1,
   })!
-  assert.deepEqual([o.name, o.kind, o.state], ["project-a", "layer", ["ahead 1", "uncommitted"]])
+  assert.deepEqual([o.name, o.kind, o.state], ["project-a", "module", ["ahead 1", "uncommitted"]])
   assert.match(
     o.tooltip,
-    /record layer project-a — committed in git_modules\/project-a\. 1 commit not pushed; changes on disk/
+    /module project-a's shared list — committed in modules\/project-a\. 1 commit not pushed; changes on disk/
   )
+})
+
+test("recordOrigin: a source kind the host no longer sends (`layer`) reads as the workspace's own", () => {
+  assert.equal(recordOrigin({ $source: "project-a", "$source-kind": "layer" })!.kind, "own")
 })
 
 test("recordOrigin: $repo null is an env folder, never committed, whatever the source says", () => {
@@ -54,9 +58,9 @@ const SOURCES = [
   { name: "my-hq", kind: "own" as const, repo: ".", path: "data/tasks", installed: true, count: 2 },
   {
     name: "project-a",
-    kind: "layer" as const,
-    repo: "git_modules/project-a",
-    path: "git_modules/project-a/data/tasks",
+    kind: "module" as const,
+    repo: ".",
+    path: "modules/project-a/data/tasks",
     installed: true,
     count: 1,
   },
@@ -69,8 +73,8 @@ test("saveRoot: the workspace own root; a module-owned list (no own root) saves 
       {
         name: "org",
         kind: "module",
-        repo: "git_modules/org",
-        path: "git_modules/org/data/people",
+        repo: ".",
+        path: "node_modules/@acme/org/data/people",
         installed: true,
         count: 1,
       },
@@ -114,11 +118,11 @@ test("formSections: a collapsed section goes after the unclaimed fields and says
 
 test("withComputedRows: nothing before the field rows load — not `$source` alone; after, the rows then $source then the rest", async () => {
   const { withComputedRows } = await import("../src/lib/computedFields.ts")
-  const layered = SOURCES as any
+  const mixed = SOURCES as any
   // measured in a dev host: the overview (with its sources) landed first, the selection initialised on
   // [$source], and the list drew one column, Source, for the whole visit
-  assert.deepEqual(withComputedRows([], "tasks", layered), [])
-  const after = withComputedRows([fieldRow("name")], "tasks", layered).map(f => f.field)
+  assert.deepEqual(withComputedRows([], "tasks", mixed), [])
+  const after = withComputedRows([fieldRow("name")], "tasks", mixed).map(f => f.field)
   assert.deepEqual(after.slice(0, 2), ["name", "$source"])
   assert.equal(
     withComputedRows([fieldRow("name")], "tasks", [SOURCES[0]] as any).some(f => f.field === "$source"),
@@ -128,15 +132,10 @@ test("withComputedRows: nothing before the field rows load — not `$source` alo
 })
 
 // cr-vscode-004: the source line's class word follows what the host says the root IS
-test("originClassWord: layer, linked clone, package from `via`; nothing for the own root; the kind word without `via`", () => {
+test("originClassWord: linked clone, package from `via`; nothing for the own root; the kind word without `via`", () => {
   assert.deepEqual(
-    [
-      originClassWord("layer", "layer"),
-      originClassWord("module", "clone"),
-      originClassWord("module", "package"),
-      originClassWord("own", "own"),
-    ],
-    ["layer", "linked clone", "package", ""]
+    [originClassWord("module", "clone"), originClassWord("module", "package"), originClassWord("own", "own")],
+    ["linked clone", "package", ""]
   )
   assert.deepEqual(
     [originClassWord("module", undefined), originClassWord("env", "own")],

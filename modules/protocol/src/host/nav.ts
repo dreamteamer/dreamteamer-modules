@@ -32,47 +32,6 @@ export type NavEntry =
       kind: "folder"
       folder: NavFolder
     }
-  | {
-      kind: "layers"
-      label: string
-      layers: LayerFolder[]
-    }
-export type LayerGroup = {
-  label: string
-  keys: string[]
-}
-export type LayerRow = {
-  collection: string
-  title: string
-  icon: string | undefined
-  count: number
-  route: string
-}
-export type LayerFolder = {
-  key: string
-  label: string
-  installed: boolean
-  rows: LayerRow[]
-}
-export type LayerSource = {
-  name: string
-  installed: boolean
-  collections: Array<{
-    collection: string
-    count: number
-  }>
-}
-export type LayerEntry =
-  | {
-      kind: "row"
-      row: LayerRow
-    }
-  | {
-      kind: "folder"
-      folder: NavFolder
-      label: string
-      entries: LayerEntry[]
-    }
 export function keepsRuntimeRecords(d: Descriptor): boolean {
   return engine().descriptor.overlaidByOf(d).length > 0
 }
@@ -99,20 +58,15 @@ export function collectionRow(d: Descriptor, sources?: SourceEntry[]): Record<st
   return { ...row, tooltip, ...(shared ? { shared: true } : {}) }
 }
 export function folderModule(
-  folder:
-    | {
-        key: string
-        collections?: ReadonlyArray<{
-          name: string
-        }>
-      }
-    | {
-        layer: string
-      },
+  folder: {
+    key: string
+    collections?: ReadonlyArray<{
+      name: string
+    }>
+  },
   modules: ReadonlyArray<Pick<ModuleRecord, "id" | "namespaces" | "collections">>
 ): string | undefined {
   const has = (id: any) => (id && modules.some(m => m.id === id) ? id : undefined)
-  if ("layer" in folder) return has(folder.layer)
   if (folder.key.startsWith("mod:")) return has(folder.key.slice(4))
   if (folder.key.startsWith("ns:")) {
     const ns = folder.key.slice(3)
@@ -157,21 +111,20 @@ export function folderPresentation(
   opts: {
     icon?: string
     shared?: boolean
-    source?: string
   } = {}
 ): Record<string, any> {
   const marks = rowMarks({ module: Boolean(module), shared: opts.shared })
   if (!module) return { icon: PLAIN_FOLDER_ICON, ...(about ? { tooltip: about } : {}), ...(marks ? { marks } : {}) }
   return {
     icon: opts.icon ?? MODULE_ICON,
-    tooltip: `${about ? `${about} — ` : ""}module ${module}${opts.source ? ` · ${opts.source}'s records` : ""} · click for its page`,
-    route: moduleRoute(module, opts.source),
+    tooltip: `${about ? `${about} — ` : ""}module ${module} · click for its page`,
+    route: moduleRoute(module),
     ...(marks ? { marks } : {}),
   }
 }
 export const WORKSPACE_ROUTE = "/settings/schema/activity"
-export function moduleRoute(id: string, source?: string): string {
-  return `/settings/schema/activity?module=${encodeURIComponent(id)}${source ? `&source=${encodeURIComponent(source)}` : ""}`
+export function moduleRoute(id: string): string {
+  return `/settings/schema/activity?module=${encodeURIComponent(id)}`
 }
 export function groupTopLevel(
   descriptors: Descriptor[],
@@ -341,11 +294,7 @@ export function foldSameLabel(
   return out
 }
 export const navKey = (e: any) =>
-  e.kind === "collection"
-    ? e.descriptor.name
-    : e.kind === "layers"
-      ? e.label.toLowerCase()
-      : e.folder.key.replace(/^(?:ns|mod|grp):/, "")
+  e.kind === "collection" ? e.descriptor.name : e.folder.key.replace(/^(?:ns|mod|grp):/, "")
 export function navHiddenOf(raw: unknown): string[] {
   if (!Array.isArray(raw)) return []
   return raw.filter(n => typeof n === "string" && n.trim() !== "").map(n => n.trim().toLowerCase())
@@ -355,26 +304,11 @@ export function withoutHidden(entries: NavEntry[], hidden?: readonly string[]): 
   const names = new Set(hidden.map(n => n.trim().toLowerCase()))
   return entries.filter(e => !names.has(navKey(e).toLowerCase()))
 }
-export function orderTopLevel(
-  top: Descriptor[],
-  folders: NavFolder[],
-  navOrder?: string[],
-  layers?:
-    | (NavEntry & {
-        kind: "layers"
-      })
-    | Array<
-        NavEntry & {
-          kind: "layers"
-        }
-      >
-): any[] {
-  const tail = !layers ? [] : Array.isArray(layers) ? layers : [layers]
+export function orderTopLevel(top: Descriptor[], folders: NavFolder[], navOrder?: string[]): any[] {
   if (!navOrder?.length) {
     return [
       ...top.map(d => ({ kind: "collection", descriptor: d })),
       ...folders.map(f => ({ kind: "folder", folder: f })),
-      ...tail,
     ]
   }
   const folderNames = new Set()
@@ -383,7 +317,6 @@ export function orderTopLevel(
     f.children.forEach(collect)
   }
   folders.forEach(collect)
-  for (const e of tail) folderNames.add(navKey(e))
   const named = new Set(navOrder.filter(n => !folderNames.has(n)))
   const lifted: any = []
   const prune = (f: any) => {
@@ -402,7 +335,6 @@ export function orderTopLevel(
     ...top.map(d => ({ kind: "collection", descriptor: d })),
     ...lifted.map((d: any) => ({ kind: "collection", descriptor: d })),
     ...remaining.map(f => ({ kind: "folder", folder: f })),
-    ...tail,
   ]
   const rank = new Map<any, number>(navOrder.map((n, i) => [n, i]))
   return entries
@@ -429,166 +361,11 @@ export function moduleLabel(id: string, title?: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ")
 }
-export const LAYERS_FOLDER_DEFAULT = "Layers"
-export function layersFolderLabel(raw: unknown): string {
-  return typeof raw === "string" && raw.trim() ? raw.trim() : LAYERS_FOLDER_DEFAULT
-}
-function keyMatches(pattern: any, key: any) {
-  const re = pattern
-    .split("*")
-    .map((p: any) => p.replace(/[.+?^${}()|[\]\\]/g, "\\$&"))
-    .join(".*")
-  return new RegExp(`^${re}$`).test(key)
-}
-export function layerGroups(raw: unknown, keys: string[]): LayerGroup[] {
-  if (!keys.length) return []
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [{ label: layersFolderLabel(raw), keys }]
-  const groups = []
-  const rules = []
-  for (const [label, v] of Object.entries(raw)) {
-    const patterns = (Array.isArray(v) ? v : [v])
-      .filter(p => typeof p === "string" && p.trim() !== "")
-      .map(p => p.trim())
-    if (!label.trim() || !patterns.length) continue
-    const group = { label: label.trim(), keys: [] as string[] }
-    groups.push(group)
-    rules.push({ group, patterns })
-  }
-  const rest = { label: LAYERS_FOLDER_DEFAULT, keys: [] as string[] }
-  for (const k of keys) (rules.find(r => r.patterns.some(p => keyMatches(p, k)))?.group ?? rest).keys.push(k)
-  return [...groups, rest].filter(g => g.keys.length)
-}
-export function layerLabels(keys: string[], titles?: Map<string, string | undefined>): Map<string, string> {
-  const split = keys.map(k => k.split("-"))
-  let common = 0
-  if (keys.length > 1) {
-    const shortest = Math.min(...split.map(s => s.length))
-    while (common < shortest - 1 && split.every(s => s[common] === split[0][common])) common++
-  }
-  const out = new Map()
-  keys.forEach((k, i) => out.set(k, titles?.get(k) || moduleLabel(split[i].slice(common).join("-"))))
-  return out
-}
-export function layerRoute(d: Descriptor, layer: string): string {
-  const filter = { logic: "_and", rules: [{ field: "$source", operator: "_eq", value: layer }] }
-  return `${routeFor(d)}?filter=${encodeURIComponent(JSON.stringify(filter))}`
-}
-export function layerFolders(
-  layers: LayerSource[],
-  descriptors: Descriptor[],
-  titles?: Map<string, string | undefined>
-): LayerFolder[] {
-  if (!layers.length) return []
-  const { titleOf, displayOf } = engine().descriptor
-  const labels = layerLabels(
-    layers.map(l => l.name),
-    titles
-  )
-  const position = new Map<any, number>(descriptors.map((d, i) => [d.name, i]))
-  const byName = new Map(descriptors.map(d => [d.name, d]))
-  return layers
-    .map(l => {
-      const rows = l.installed
-        ? l.collections
-            .filter(c => c.count > 0 && byName.has(c.collection))
-            .sort((a, b) => position.get(a.collection) - position.get(b.collection))
-            .map(c => {
-              const d = byName.get(c.collection)
-              return {
-                collection: c.collection,
-                title: titleOf(d),
-                icon: displayOf(d).nav?.icon,
-                count: c.count,
-                route: layerRoute(d, l.name),
-              }
-            })
-        : []
-      return { key: l.name, label: labels.get(l.name), installed: l.installed, rows }
-    })
-    .sort((a, b) => a.label.localeCompare(b.label) || a.key.localeCompare(b.key))
-}
-export function groupedLayerFolders(
-  layers: LayerSource[],
-  descriptors: Descriptor[],
-  raw: unknown,
-  titles?: Map<string, string | undefined>
-): Array<{
-  label: string
-  layers: LayerFolder[]
-}> {
-  return layerGroups(
-    raw,
-    layers.map(l => l.name)
-  ).map(g => ({
-    label: g.label,
-    layers: layerFolders(
-      layers.filter(l => g.keys.includes(l.name)),
-      descriptors,
-      titles
-    ),
-  }))
-}
-export function layerNote(l: LayerFolder): string | undefined {
-  if (!l.installed) return "not installed"
-  return l.rows.length ? undefined : "no records yet"
-}
-export function layerEntries(
-  rows: LayerRow[],
-  descriptors: Descriptor[],
-  nav: {
-    declared: string[]
-    workspaceModule?: string
-    dependsOn?: Map<string, string[]>
-    navGroups?: Map<string, string[]>
-    navOrder?: string[]
-    titleOf?: Map<string, string | undefined>
-    namespacesOf?: Map<string, string[]>
-  }
-): LayerEntry[] {
-  const rowOf = new Map(rows.map(r => [r.collection, r]))
-  const held = descriptors.filter(d => rowOf.has(d.name))
-  const titleOf = nav.titleOf ?? new Map()
-  const { top, folders } = groupTopLevel(
-    held,
-    nav.declared,
-    nav.workspaceModule,
-    nav.dependsOn,
-    nav.navGroups,
-    nav.namespacesOf,
-    titleOf
-  )
-  const placed = new Set(top.map(d => d.name))
-  const walk = (f: any) => {
-    f.collections.forEach((d: any) => placed.add(d.name))
-    f.children.forEach(walk)
-  }
-  folders.forEach(walk)
-  const position = new Map<any, number>(held.map((d, i) => [d.name, i]))
-  const rowsTop = [...top, ...held.filter(d => !placed.has(d.name))].sort(
-    (a, b) => position.get(a.name) - position.get(b.name)
-  )
-  const folderEntry = (f: any, parentKey?: any): LayerEntry => ({
-    kind: "folder",
-    folder: f,
-    label: groupLabel(f.key, titleOf, parentKey),
-    entries: [
-      ...f.collections.map((d: any) => ({ kind: "row", row: rowOf.get(d.name) })),
-      ...f.children.map((c: any) => folderEntry(c, f.key)),
-    ],
-  })
-  return orderTopLevel(rowsTop, folders, nav.navOrder).flatMap((e): LayerEntry[] =>
-    e.kind === "collection"
-      ? [{ kind: "row", row: rowOf.get(e.descriptor.name) }]
-      : e.kind === "folder"
-        ? [folderEntry(e.folder)]
-        : []
-  )
-}
 // ── nav.yaml (cr-dt-008) ─────────────────────────────────────────────────────────────────────────────────────
 // The left nav is a document the person arranges (nav.yaml at the workspace root, navDoc.js). `buildTree` draws
 // it by the design's rules; `legacyTree` is the grouping above (module folders, sections, navGroups/navOrder/
 // navHidden), kept under one name for exactly two uses: the lossless migration of old settings into nav.yaml, and
-// a workspace or layer that still has those settings and no nav.yaml.
+// a workspace that still has those settings and no nav.yaml.
 
 /** The unplaced-row order: by title, then name. Passed to applyNavOp as its `collections`. */
 export function tailOrder(
@@ -643,7 +420,7 @@ export function buildTree({
   titleOf?: (d: any) => string
   views?: any[]
   namespaceTitle?: (ns: string, parentNs: string) => string
-  nodeOf?: (d: any) => Partial<NavNode> & { row?: LayerRow }
+  nodeOf?: (d: any) => Partial<NavNode>
   icon?: (name?: string) => string | undefined
   internal?: (d: any) => boolean
 }): Array<NavNode & { target?: NavTarget }> {
@@ -772,44 +549,6 @@ export function buildTree({
   }
   return [...drawItems(tree, []), ...tailsOf("", [])]
 }
-/**
- * A record layer's tree when its clone holds nav.yaml (design §3 rule 9): buildTree's rules over the rows the layer
- * holds and nothing else. A name the layer does not hold is skipped, a declared namespace it holds no row of draws no
- * folder, and every collection node carries its layer `row` ({ collection, title, icon, count, route }). Keys and
- * targets are buildTree's; the host prefixes the keys with the layer. A layer with no nav.yaml draws `layerEntries`.
- * @param {{ rows: Array<{ collection: string }>, descriptors: Array<{ name: string }>, doc: object | null, namespaces?: string[], titleOf?: (d) => string, namespaceTitle?: (ns: string, parentNs: string) => string, icon?: (name?: string) => string }} o
- */
-export function layerTree({
-  rows,
-  descriptors,
-  doc,
-  namespaces = [],
-  titleOf,
-  namespaceTitle,
-  icon,
-}: {
-  rows: LayerRow[]
-  descriptors: ReadonlyArray<{ name: string; title?: string; internal?: boolean; display?: any }>
-  doc: NavDoc | null | undefined
-  namespaces?: string[]
-  titleOf?: (d: any) => string
-  namespaceTitle?: (ns: string, parentNs: string) => string
-  icon?: (name?: string) => string | undefined
-}): Array<NavNode & { target?: NavTarget; row?: LayerRow }> {
-  const rowOf = new Map(rows.map(r => [r.collection, r]))
-  const held = descriptors.filter(d => rowOf.has(d.name))
-  return buildTree({
-    descriptors: held,
-    doc,
-    titleOf,
-    namespaceTitle,
-    icon,
-    namespaces: namespaces.filter(ns => held.some(d => d.name.startsWith(`${ns}/`))),
-    // a layer's rows are the records it holds, already chosen; nothing it holds is folded out
-    internal: () => false,
-    nodeOf: d => ({ row: rowOf.get(d.name) }),
-  })
-}
 /** `dreamteamer.navGroups` as a Map — module ids per group label; anything else is empty. */
 export function navGroupsOf(raw: unknown): Map<string, string[]> {
   const out = new Map()
@@ -836,7 +575,7 @@ export function hasNavSettings(
  * The tree the old settings drew: groupTopLevel → orderTopLevel → withoutHidden, unchanged.
  * @param {Array} descriptors
  * @param {{ navGroups?: unknown, navOrder?: unknown, navHidden?: unknown }} settings
- * @param {{ declared?: string[], workspaceModule?: string, dependsOn?: Map, namespacesOf?: Map, titleOf?: Map, layers?: unknown }} ctx
+ * @param {{ declared?: string[], workspaceModule?: string, dependsOn?: Map, namespacesOf?: Map, titleOf?: Map }} ctx
  */
 export function legacyTree(
   descriptors: Descriptor[],
@@ -847,7 +586,6 @@ export function legacyTree(
     dependsOn?: Map<string, string[]>
     namespacesOf?: Map<string, string[]>
     titleOf?: Map<string, string | undefined>
-    layers?: (NavEntry & { kind: "layers" }) | Array<NavEntry & { kind: "layers" }>
   } = {}
 ): NavEntry[] {
   const { top, folders } = groupTopLevel(
@@ -859,10 +597,7 @@ export function legacyTree(
     ctx.namespacesOf,
     ctx.titleOf ?? new Map()
   )
-  return withoutHidden(
-    orderTopLevel(top, folders, navOrderOf(settings?.navOrder), ctx.layers),
-    navHiddenOf(settings?.navHidden)
-  )
+  return withoutHidden(orderTopLevel(top, folders, navOrderOf(settings?.navOrder)), navHiddenOf(settings?.navHidden))
 }
 /** The icon a legacy folder draws (an authored name, before codiconFor): its module's look — the first shipped
  *  collection's icon by nav order — else the module icon; undefined for a folder no module owns (a plain folder). */

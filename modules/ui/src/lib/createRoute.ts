@@ -15,7 +15,7 @@
  *                                  seeded from the view
  *
  *   /<a page ui-view's route>      a `scope: page` view of layout `page` or `activity` (pages/PageView.tsx);
- *                                  `?source=<layer>` scopes it to one record layer
+ *                                  `?source=<name>` scopes it to one source
  *
  *   /a/<app>[/…]                   a module app (modules/host.tsx frames it); `<app>` is the id it registered
  *   /<any other page view's route> a `scope: page` view whose layout NAMES a module app: that app's page, or a

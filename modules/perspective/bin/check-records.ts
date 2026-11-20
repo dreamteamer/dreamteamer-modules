@@ -48,8 +48,6 @@
 import fs from "node:fs"
 import path from "node:path"
 import yaml from "js-yaml"
-import { execFileSync } from "node:child_process"
-import { fileURLToPath } from "node:url"
 import {
   listRecords,
   readRecord,
@@ -128,14 +126,10 @@ const COUNT_TAIL =
 /**
  * WHERE THE RECORDS ARE. Walk up from the CURRENT DIRECTORY, the way the engine resolves a workspace,
  * and REFUSE when no root is found rather than reporting a clean zero. A walk from the SCRIPT finds
- * the package's own root whenever the module is linked for preview (a `git_modules/` symlink into a
+ * the package's own root whenever the module is linked (a symlink into a
  * clone elsewhere) and looks for records in a tree that has none — and a guard that reports success
  * while checking nothing is byte-identical to a pass. There is deliberately NO script-relative
  * fallback: a fallback that can silently answer the wrong question is worse than an error.
- *
- * The `git_modules/` skip is the same rule `lib/workspace.mjs` carries: `npm install` inside a
- * module clone leaves a lockfile there, so a walk that stops at the first `package-lock.json` would
- * resolve the CLONE as the workspace.
  *
  * ZERO RECORDS IS STILL LEGAL. A workspace that has the module installed and has never run a
  * retrospective has no `data/perspective` at all, and `0 checked` is the honest answer for it. The
@@ -143,8 +137,7 @@ const COUNT_TAIL =
  */
 function workspaceRootFromCwd(start = process.cwd()) {
   for (let d = path.resolve(start); ; d = path.dirname(d)) {
-    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
-    if (!inGitModules && fs.existsSync(path.join(d, "package-lock.json"))) return d
+    if (fs.existsSync(path.join(d, "package-lock.json"))) return d
     if (path.dirname(d) === d) return null
   }
 }
@@ -561,51 +554,6 @@ for (const [file, { fields }] of records) {
     fail(file, `handle ${handle} is also on ${rel(first)} — two collaborators for one person, merge them`)
   }
 }
-
-// ── the module clone's own unpushed work ────────────────────────────────────────────────────────
-// AN EDIT MADE IN THE STUDIO, IN A CONSUMING WORKSPACE, LANDS HERE — inside `git_modules/<name>`,
-// which is gitignored THERE and is a clone of the module repo. So the change is invisible to the
-// module, invisible to every other workspace consuming it, and erased by the next pull. Worse, the
-// clone diverges, so `git pull --ff-only` refuses outright and the module silently stops updating
-// in that workspace until somebody looks. `check` runs on every workspace, every time, so it is the
-// one thing that reliably looks at this directory.
-//
-// A WARNING, not a violation: the work is not wrong, it is merely stranded, and refusing `check`
-// would block a workspace over a state its own records are innocent of.
-function strandedCloneWarning() {
-  const here = fileURLToPath(new URL("..", import.meta.url))
-  if (!here.includes(`${path.sep}git_modules${path.sep}`)) return null // running from the module repo itself
-  const git = (args: string[]) => {
-    try {
-      return execFileSync("git", ["-C", here, ...args], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim()
-    } catch {
-      return null
-    }
-  }
-  const ahead = git(["rev-list", "--count", "origin/main..HEAD"])
-  const dirty = git(["status", "--porcelain"])
-  if (ahead === null) return null // no origin, or not a clone — not our business
-  const commits = Number(ahead) || 0
-  const files = dirty ? dirty.split("\n").filter(Boolean).length : 0
-  if (!commits && !files) return null
-  const parts = []
-  if (commits) parts.push(`${commits} commit(s) not on origin`)
-  if (files) parts.push(`${files} uncommitted file(s)`)
-  return [
-    `⚠ the consumed module clone has work that exists NOWHERE ELSE — ${parts.join(" and ")}.`,
-    `    ${here}`,
-    "    This directory is gitignored by THIS workspace and is a clone of the module repo, so an edit",
-    "    made here (the studio commits ui-view saves into it) is invisible to the module, invisible to",
-    "    every other workspace, and lost on the next pull — which will itself refuse, because the clone",
-    "    has diverged.",
-    "    Carry it to the module repo by hand, then `git -C <the clone> reset --hard origin/main`.",
-  ].join("\n")
-}
-const stranded = strandedCloneWarning()
-if (stranded) warnings.push(stranded)
 
 // A ref into a peer collection this workspace does not have is UNCHECKED, and saying so is the
 // whole point: silence here would read exactly like a pass.

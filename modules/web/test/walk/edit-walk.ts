@@ -2,10 +2,7 @@
 // The edit walk (cr-modules-005 lines 4 and 5) on the synthetic Northwind workspace, in headless Chromium:
 //   1. a record edited on its page lands on disk byte-for-byte as `dt set` writes it — git shows one record file
 //   2. a write the engine refuses shows the engine's own sentence on the page, and nothing is written
-//   3. a record held by the git_modules layer, edited on its page, lands in the layer's clone
-//   4. renaming that record is refused by the engine naming the layer (asked from the signed-in page: the
-//      record page offers no rename gesture, so the refusal is the API's answer to the page's session)
-//   5. a record written from a terminal with `dt set` re-renders the open list within 5 s, with no reload
+//   3. a record written from a terminal with `dt set` re-renders the open list within 5 s, with no reload
 // usage: node modules/web/test/walk/edit-walk.mjs        (DT_WEB_APP_DIR, DT_ENGINE_DIR, DT_WALK_SHOTS optional)
 import fs from "node:fs"
 import path from "node:path"
@@ -69,53 +66,7 @@ try {
   page.once("dialog", d => d.accept())
   await page.click('button[title="Cancel"]')
 
-  // 3 — a layer record's edit lands in the layer's clone, and nothing in the workspace's own repo
-  await go(page, "/content/projects/harbor-mutual-archive")
-  await page.click('button[title="Edit"]')
-  await page.fill('[data-field="name"] input', "Harbor Mutual archive, 2019")
-  await page.click('button[title="Save"]')
-  await page.waitForSelector('button[title="Edit"]', { timeout: 10_000 })
-  const inLayer = status(f.layer)
-  ok(
-    inLayer === "M data/projects/harbor-mutual-archive.project.md",
-    "the layer record's edit landed in the layer's clone",
-    JSON.stringify(inLayer)
-  )
-  ok(
-    /Harbor Mutual archive, 2019/.test(
-      fs.readFileSync(path.join(f.layer, "data", "projects", "harbor-mutual-archive.project.md"), "utf8")
-    ),
-    "with the new value"
-  )
-  ok(status() === "", "the workspace's own repo is unchanged", JSON.stringify(status()))
-
-  // 4 — renaming the layer's record: the engine refuses, naming the layer
-  const menu = await (async () => {
-    await page.click('button[title="More actions"]')
-    const items = await page.$$eval("[role=menuitem]", e => e.map(x => x.textContent.trim()))
-    await page.keyboard.press("Escape")
-    return items
-  })()
-  console.log(`  the record page's actions: ${JSON.stringify(menu)} (no rename gesture)`)
-  const rename = await page.evaluate(async () => {
-    const r = await fetch("/api/collections/projects/rename", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ old: "harbor-mutual-archive", new: "harbor-mutual-history" }),
-    })
-    return { status: r.status, text: await r.text() }
-  })
-  ok(
-    rename.status === 400 && /held by layer northwind-archive/.test(rename.text),
-    "a rename of the layer record is refused, naming the layer",
-    `${rename.status} ${rename.text.slice(0, 160)}`
-  )
-  ok(
-    fs.existsSync(path.join(f.layer, "data", "projects", "harbor-mutual-archive.project.md")),
-    "the layer record did not move"
-  )
-
-  // 5 — a terminal write re-renders the open list without a reload
+  // 3 — a terminal write re-renders the open list without a reload
   await go(page, "/content/projects")
   await page.evaluate(() => {
     window.__walkNoReload = true

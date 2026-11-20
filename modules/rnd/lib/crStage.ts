@@ -10,8 +10,7 @@
 //
 // `dt check` WARNS (never a violation: the day a workspace upgrades every request has an empty stage) at
 // most once per request: a stage that is not the open gate, else one the record contradicts, else an
-// empty one. A request a record layer holds is judged only when it carries a stage — its home workspace
-// has the field and wrote it; filling an empty one is that workspace's migration, never this one's.
+// empty one.
 // On an engine without the warning channel or without `commandsFor` the rule says nothing.
 import path from "node:path"
 import type { ExtensionContext } from "dreamteamer"
@@ -119,7 +118,7 @@ export function allowedStages(f: Record<string, any>): string[] {
   return STAGES.filter(s => stageContradictions(f, s).length === 0)
 }
 
-/** The warnings for rows `{ id, file, stage, expected, gate, fields, inLayer }` — pure; at most one per row. */
+/** The warnings for rows `{ id, file, stage, expected, gate, fields }` — pure; at most one per row. */
 /** One change request as stageWarnings reads it. */
 export interface RequestRow {
   id: string
@@ -129,7 +128,6 @@ export interface RequestRow {
   available?: string[]
   gate?: string | null
   expected?: string | null
-  inLayer?: string | null
 }
 
 export function stageWarnings(rows: RequestRow[]): Warning[] {
@@ -137,7 +135,6 @@ export function stageWarnings(rows: RequestRow[]): Warning[] {
   const warn = (file: string, message: string) => out.push({ file, message, warning: true })
   for (const r of rows) {
     const stage = set(r.stage) ? String(r.stage) : null
-    if (r.inLayer && !stage) continue
     if (stage && r.expected && stage !== r.expected) {
       warn(
         r.file,
@@ -179,10 +176,8 @@ export function compilesStage(store: Store): boolean {
   }
 }
 
-/** Every change request the store reads, with its expected stage and open gate — one `commandsFor` call.
- *  `inLayer` names the record layer that holds it (null for the workspace's own root). */
+/** Every change request the store reads, with its expected stage and open gate — one `commandsFor` call. */
 export function readRequests(store: Store, dt: ExtensionContext["dt"]): RequestRow[] {
-  const d = store.descriptor(COLLECTION)
   const rows = [...store.readAll(COLLECTION)]
   const ids = rows.map(r => r.id)
   const res = dt.commandsFor(store, COLLECTION, ids)
@@ -192,7 +187,6 @@ export function readRequests(store: Store, dt: ExtensionContext["dt"]): RequestR
     for (const c of res.commands ?? [])
       if (c.states?.[id] === "available") available.push(String(c.binding).replace(/^command-bindings\//, ""))
     const gate = expectedGate({ status: fields.status, available })
-    const layer = typeof store.layerOfFile === "function" ? (store.layerOfFile(d, file)?.layer ?? null) : null
     out.push({
       id,
       file,
@@ -201,7 +195,6 @@ export function readRequests(store: Store, dt: ExtensionContext["dt"]): RequestR
       available,
       gate,
       expected: expectedStage({ status: fields.status, available }),
-      inLayer: layer,
     })
   }
   return out

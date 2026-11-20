@@ -11,8 +11,8 @@
  * view, a cycle, or a child a panel cannot draw is refused IN ITS PANEL, by its reference — never a blank page,
  * never its siblings taken down.
  *
- * `source` (`?source=`) scopes the whole page to one record layer: every collection panel is narrowed by
- * `$source is <layer>` as SCOPE (no removable rule), the activity reads only that layer, and every link out carries
+ * `source` (`?source=`) scopes the whole page to one source: every collection panel is narrowed by
+ * `$source is <name>` as SCOPE (no removable rule), the activity reads only that source, and every link out carries
  * the scope as an ordinary rule (`PageSource`, read by the counts layout).
  *
  * The view is looked up LIVE by id, and each embedded browse is keyed on its child's fingerprint: a browse reads its
@@ -59,7 +59,7 @@ export function PageView({
   ancestry = [],
 }: {
   viewId: string
-  /** A record layer the page is scoped to — `$source is <layer>` on every panel. */
+  /** A source the page is scoped to — `$source is <name>` on every panel. */
   source?: string | undefined
   /** Drawn inside another page: no heading, no page padding — the grid alone. */
   nested?: boolean
@@ -133,7 +133,7 @@ export function PageView({
               )}
               <p
                 className={subtle}
-                title="The page view drawn here — the nearest one naming this module wins: the workspace's own, then a layer's, then a package's"
+                title="The page view drawn here — the nearest one naming this module wins: the workspace's own, then a package's"
               >
                 {pageOrigin(view)}
               </p>

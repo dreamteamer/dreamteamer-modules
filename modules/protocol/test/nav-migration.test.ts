@@ -5,7 +5,7 @@
 // writes them once: the folders the settings drew (a module folder, a namespace folder, a navGroups folder) become
 // the document's folders in the same order and nesting, a hidden folder stays hidden, and the drawing after the
 // migration is the drawing before it — less the module marks, module routes and module tooltips a nav.yaml folder
-// never carries, and less the layers folder, which nav.yaml does not place. A second run writes nothing.
+// never carries. A second run writes nothing.
 import { test, before } from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"
@@ -101,17 +101,15 @@ before(() => {
   assert.equal(r.code, 0, `${r.stdout}\n${r.stderr}`)
 })
 
-/** The comparable drawing: kind, key, label, icon and children; marks, routes and tooltips out, the layers folder out. */
+/** The comparable drawing: kind, key, label, icon and children; marks, routes and tooltips out. */
 const comparable = nodes =>
-  nodes
-    .filter(n => n.kind !== "layers")
-    .map(n => ({
-      kind: n.kind,
-      key: n.key,
-      label: n.label,
-      icon: n.icon,
-      ...(n.children ? { children: comparable(n.children) } : {}),
-    }))
+  nodes.map(n => ({
+    kind: n.kind,
+    key: n.key,
+    label: n.label,
+    icon: n.icon,
+    ...(n.children ? { children: comparable(n.children) } : {}),
+  }))
 const drawn = () => comparable(navModel({ root, settings: SETTINGS })[0].children)
 
 test("the drawing after the migration is the drawing before it, and the hidden module folder stays hidden", async () => {
@@ -167,7 +165,7 @@ test("no settings, nothing to migrate", () => {
   })
 })
 
-test("legacyDoc: a top-level hidden collection goes to hidden, the layers entry is dropped, nesting is kept", () => {
+test("legacyDoc: a top-level hidden collection goes to hidden, nesting is kept", () => {
   const d = name => ({ name })
   const entries = [
     { kind: "collection", descriptor: d("notes") },
@@ -180,7 +178,6 @@ test("legacyDoc: a top-level hidden collection goes to hidden, the layers entry 
         children: [{ key: "grp:Product", collections: [d("rnd/designs")], children: [] }],
       },
     },
-    { kind: "layers", label: "Layers", layers: [] },
   ]
   const doc = legacyDoc(entries, { navHidden: ["drafts"] }, { titleOf: new Map(), iconOf: () => undefined })
   assert.deepEqual(doc, {

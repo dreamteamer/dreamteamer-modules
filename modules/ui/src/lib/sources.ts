@@ -2,16 +2,15 @@ import { themeColor } from "./collectionDisplay.ts"
 /**
  * WHERE A RECORD COMES FROM — the webview half of the source mark (host: `src/sources.ts`).
  *
- * A collection on engine 0.35.0+ is a stack of roots: the workspace's own data, each record layer it
- * lists (another workspace cloned under `git_modules/`), and the folder a module-owned collection
+ * A collection is a stack of roots: the workspace's own data, and the folder a module-owned collection
  * keeps its shared list in. The host names each root — the workspace's `package.json` name, the
- * layer's `git_modules` key, the module's id — and stamps every list row and record with `$source`,
+ * module's id — and stamps every list row and record with `$source`,
  * the name of the root it was read from. The collection row of the overview carries `sources`, every
  * root with the records read from it.
  *
  * Three rules, and no fourth (design 2026-10-28):
  *   1. MARK ONLY THE EXCEPTION. A record from the workspace's own root carries no mark; a workspace
- *      using neither layers nor module-owned lists looks exactly as it does today.
+ *      using no module-owned list looks exactly as it does today.
  *   2. THE MARK MEANS "READ FROM". `● name` — a dot in a colour hashed from the name, and the name,
  *      always together. Where an edit COMMITS is the commit action's to say, and nothing else's.
  *   3. THE GESTURE IS THE CHIP. Filtering by source is the ordinary filter rule, reached from the
@@ -25,10 +24,8 @@ import { newRule, type FilterGroup, type FilterRule } from "./filterQuery.ts"
 /** The wire key, and therefore the column's field name. `$`-prefixed like every synthetic key the
  *  adapter never persists — NOT `source`, which a module may author as a record field. */
 export const SOURCE_FIELD = "$source"
-/** `own` · `layer` · `module` beside it. */
+/** `own` · `module` beside it. */
 export const SOURCE_KIND_FIELD = "$source-kind"
-/** On an id more than one root holds: the names of BOTH roots, the first being the one read. */
-export const DUPLICATES_FIELD = "$duplicates"
 
 /** The id of the registered View that draws the mark (`views/ViewSource.vue`). */
 export const SOURCE_VIEW = "source"
@@ -57,8 +54,7 @@ export function isMixed(sources: readonly SourceEntry[] | undefined): boolean {
 }
 
 /**
- * The ONE foreign source every record comes from — a module-owned list, or a collection whose only
- * records are a layer's — or null. The browse says it once, under the title (*shared from org*),
+ * The ONE foreign source every record comes from — a module-owned list — or null. The browse says it once, under the title (*shared from org*),
  * instead of marking every row with the same word.
  */
 export function singleForeignSource(sources: readonly SourceEntry[] | undefined): SourceEntry | null {
@@ -102,7 +98,7 @@ export function sourceFieldRow(collection: string, sources: readonly SourceEntry
     type: "string",
     title: "Source",
     description:
-      "Where the record is read from — the workspace itself, a record layer, or a module’s shared list. Computed from the file; never stored.",
+      "Where the record is read from — the workspace itself, or a module’s shared list. Computed from the file; never stored.",
     required: false,
     kind: "virtual",
     editable: false,
@@ -142,8 +138,8 @@ export function sourceColor(name: string): string {
 // ---- WHETHER A WRITE LANDS — the glyph vocabulary (cr-vscode-004) -----------------------------
 // Every mark carries ONE trailing codicon, chosen by whether rows of that root are changed from here
 // (decision 2026-10-31, "writability glyphs"): a PENCIL when they are (the workspace's own root, a
-// linked clone, an installed layer — new records too when `access` is `write`), a LOCK when nothing is
-// written from here (an installed package, a layer not installed). The root's CLASS and the exact
+// linked clone — new records too when `access` is `write`), a LOCK when nothing is written from here
+// (an installed package). The root's CLASS and the exact
 // writability are words — the hover on every mark, the picker row, the record page's source line and
 // the target choice — never a third glyph. No `access` (a host older than this) draws no glyph.
 
@@ -156,11 +152,9 @@ export function viaWord(via: SourceVia | undefined): string {
     ? "this workspace"
     : via === "clone"
       ? "linked clone"
-      : via === "layer"
-        ? "record layer"
-        : via === "package"
-          ? "installed package"
-          : ""
+      : via === "package"
+        ? "installed package"
+        : ""
 }
 
 /** Whether a write lands there, in words. */
@@ -174,17 +168,10 @@ export function accessWord(access: SourceAccess | undefined): string {
         : ""
 }
 
-/** The hover of a mark: `project-a — record layer · writes here`, and the reason for anything less. */
-export function markTitle(
-  name: string,
-  entry: { via?: SourceVia; access?: SourceAccess; note?: string; record?: string | null } = {}
-): string {
+/** The hover of a mark: `crm — linked clone · writes here`, and the reason for anything less. */
+export function markTitle(name: string, entry: { via?: SourceVia; access?: SourceAccess; note?: string } = {}): string {
   const words = [viaWord(entry.via), accessWord(entry.access)].filter(Boolean).join(" · ")
-  return [
-    `${name}${words ? ` — ${words}` : ""}`,
-    entry.note && entry.access !== "write" ? entry.note : "",
-    entry.record ?? "",
-  ]
+  return [`${name}${words ? ` — ${words}` : ""}`, entry.note && entry.access !== "write" ? entry.note : ""]
     .filter(Boolean)
     .join("\n")
 }
@@ -192,7 +179,6 @@ export function markTitle(
 /** What a surface hands `SourceMark` for one record's root. */
 export interface SourceMarkProps {
   name: string
-  record: string | null
   access?: SourceAccess
   via?: SourceVia
   note?: string
@@ -247,7 +233,7 @@ export function sourceEntry(sources: readonly SourceEntry[] | undefined, name: u
 // ---- THE SOURCE PICKER (operator 2026-10-29) -------------------------------------------------
 // It replaced the facet strip under the header: one control beside the filter button that shows the
 // selection, and lists every source only while it is open. It writes the ORDINARY filter (one `$source`
-// rule), so Save, the URL and the nav rows that open a layer all read the same thing — and since
+// rule), so Save and the URL read the same thing — and since
 // cr-vscode-004 the chips row draws that rule as a `Source is …` chip and the filter badge counts it.
 
 /** The Source chip's words: `Source is project-a`, `Source is project-a · project-b` — ONE chip for the
@@ -274,7 +260,7 @@ export function selectedSources(group: FilterGroup): string[] {
 
 /**
  * The group with its source rules replaced by ONE: none for all (`names` null or empty), `is` for a
- * single source — the same rule a layer's nav row opens with — `is one of` for several. Every other
+ * single source, `is one of` for several. Every other
  * rule is kept, in place.
  */
 export function withSourceSelection(group: FilterGroup, names: readonly string[] | null): FilterGroup {
@@ -306,7 +292,7 @@ export function toggleSource(group: FilterGroup, name: string, available: readon
 
 /**
  * The part of a browse's remount key the SOURCES move: the names of the sources its collection row
- * carries — a layer installed, or a module-owned list compiled in, changes what the collection can show,
+ * carries — a module-owned list compiled in changes what the collection can show,
  * and only that: a list re-reads its records only when it remounts, and a count changing must not
  * remount it. (It was the private / shared scope's key until cr-vscode-004 removed the scope.)
  */
@@ -347,8 +333,8 @@ export function keepsSource(group: FilterGroup, source: string | undefined): boo
 // ---- WHERE A NEW RECORD GOES — the target choice (cr-vscode-004, decision 2026-10-31) ----------------
 // New on a list that reads two or more roots a record can be ADDED to asks which one first — a popover
 // under the header's +, before the form — unless the picker already narrows to exactly one such root.
-// A target is an installed source whose `access` is `write` (the workspace's own root, a linked clone,
-// a compiled layer; host `src/sources.ts`). Pure, so every branch is a unit test.
+// A target is an installed source whose `access` is `write` (the workspace's own root or a linked clone;
+// host `src/sources.ts`). Pure, so every branch is a unit test.
 
 /** Can a new record be added to this root from here? */
 export function isTarget(s: SourceEntry): boolean {
@@ -482,10 +468,10 @@ export interface PendingRepo {
 
 /**
  * What the commit button CALLS its target. The engine names a repo by its workspace-relative path
- * (`.` for the workspace itself, `git_modules/org` for a clone); the button says the workspace's own
- * name for `.` and the path otherwise — a path is honest about which clone, and a layer's name
- * alone would hide that an inline module's records commit to the WORKSPACE (source ≠ repo, which
- * is the whole reason the commit action, not the mark, says where an edit lands).
+ * (`.` for the workspace itself); the button says the workspace's own name for `.` and the path
+ * otherwise — a module's name alone would hide that an inline module's records commit to the
+ * WORKSPACE (source ≠ repo, which is the whole reason the commit action, not the mark, says where an
+ * edit lands).
  */
 export function commitRepoLabel(repo: string, workspace: string | undefined): string {
   return repo === "." ? workspace || "this workspace" : repo

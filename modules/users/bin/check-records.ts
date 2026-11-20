@@ -3,7 +3,7 @@
 // `human_owner`, that owner is itself a human, and a human row carries no agent-only field.
 //
 //   npx dreamteamer run @dreamteamer/users check-records [--data-root <dir>] [--json]
-//   (the same for a copy under modules/ or a git_modules/ clone: the engine resolves the module)
+//   (the same for a copy under modules/: the engine resolves the module)
 //
 // Chain it after `dreamteamer check` in the workspace's `check` script. Exit 0 clean, 1 with
 // violations. An agent owned by nobody, or by another agent, has no human accountable for it.
@@ -89,7 +89,7 @@ function main() {
   process.exit(violations.length ? 1 : 0)
 }
 
-// Both sides realpath'd: reached through a symlink (an npm link, a git_modules clone) the invoked
+// Both sides realpath'd: reached through a symlink (an npm link) the invoked
 // path and the resolved one differ, and a guard that silently never runs reads as a clean pass.
 const isMain = () => {
   if (!process.argv[1]) return false

@@ -1,8 +1,7 @@
 // dt session bind (cr-modules-010, lines 3-5; rnd/tests cr-modules-010-t3): a session's records take any
 // number of references to records of any collection; a second bind changes nothing; an unknown ref is
 // refused and nothing is written; another session listing the record gets one line, never a refusal;
-// and a session record is written to the workspace the session runs in — never inside a git_modules/
-// layer — so one harness session is one record.
+// and a session record is written to the workspace the session runs in, so one harness session is one record.
 import { test, describe, after } from "node:test"
 import assert from "node:assert"
 import fs from "node:fs"
@@ -92,16 +91,14 @@ describe("dt session bind", { skip }, () => {
 })
 
 describe("one write root: the workspace the session runs in", () => {
-  test("from inside git_modules/<layer>/ the write root is the parent workspace; a lone workspace is its own", () => {
+  test("from inside the workspace the write root is the workspace; a lone folder is its own", () => {
     const hq = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "dtm-root-")))
     after(() => fs.rmSync(hq, { recursive: true, force: true }))
-    const layer = path.join(hq, "git_modules", "northwind")
-    fs.mkdirSync(layer, { recursive: true })
-    for (const d of [hq, layer]) {
-      fs.writeFileSync(path.join(d, "package.json"), "{}")
-      fs.writeFileSync(path.join(d, "package-lock.json"), "{}")
-    }
-    assert.equal(writeRootOf(layer), hq)
+    const inner = path.join(hq, "data", "tasks")
+    fs.mkdirSync(inner, { recursive: true })
+    fs.writeFileSync(path.join(hq, "package.json"), "{}")
+    fs.writeFileSync(path.join(hq, "package-lock.json"), "{}")
+    assert.equal(writeRootOf(inner), hq)
     assert.equal(writeRootOf(hq), hq)
     const lone = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "dtm-lone-")))
     after(() => fs.rmSync(lone, { recursive: true, force: true }))

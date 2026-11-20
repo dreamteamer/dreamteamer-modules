@@ -4,10 +4,10 @@
 // with its own `import.meta.url`. The two are the path as INVOKED and the path as RESOLVED, and they
 // are the same string only when nothing in between is a symlink.
 //
-// Preview mode puts a symlink in between, by design: `git_modules/extensions` points into a clone
-// somewhere else entirely, which is the whole mechanism that lets a consumer review this package
-// before it is published. So under exactly the conditions these scripts are most needed, a naive
-// `===` is false and the guard never fires.
+// `npm link`, or a module folder symlinked into a workspace, puts a symlink in between, by design: it
+// points into a clone somewhere else entirely, which is how a consumer reviews this package before it
+// is published. So under exactly the conditions these scripts are most needed, a naive `===` is false
+// and the guard never fires.
 //
 // ⚠ AND THE FAILURE IS SILENT — no output, exit 0. Measured 2026-09-11 on a linked consumer holding
 // 52 activities, 35 decisions and 8 phases: `modules/projects/dist/bin/check-records.js` printed nothing
@@ -22,7 +22,7 @@ import path from "node:path"
 import { spawnSync } from "node:child_process"
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
-const SKIP = new Set(["node_modules", ".git", "git_modules", ".dreamteamer", ".claude", "tests", "dist"])
+const SKIP = new Set(["node_modules", ".git", ".dreamteamer", ".claude", "tests", "dist"])
 
 /** Every script source in the package that could be run as a script (dist/ is its build). */
 function scripts(dir = ROOT, out = []) {
@@ -65,10 +65,10 @@ describe("the entry guard survives a symlink", () => {
 
 describe("and it actually runs, through a real symlink", () => {
   // The shape check above is a grep and could be satisfied by a file that mentions `realpathSync`
-  // in a comment. This one invokes the guard the way preview mode does and reads what comes back.
+  // in a comment. This one invokes the guard through a symlink and reads what comes back.
   test("the users guard reports through a symlink, rather than exiting 0 in silence", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "entry-"))
-    // A workspace with one user, reached through a link that stands in for `git_modules/` or `npm link`.
+    // A workspace with one user, reached through a link that stands in for `npm link`.
     const rec = path.join(tmp, "data", "users", "dana-oren.user.md")
     fs.mkdirSync(path.dirname(rec), { recursive: true })
     fs.writeFileSync(rec, "---\nname: Dana Oren\nkind: human\n---\n")

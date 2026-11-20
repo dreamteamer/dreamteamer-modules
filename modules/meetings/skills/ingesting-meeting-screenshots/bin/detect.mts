@@ -32,11 +32,10 @@ import { fileURLToPath } from "node:url"
 
 // The workspace root is found by walking up from this file to `package-lock.json` (every module
 // carries a package.json), never from process.cwd(), so a run from another directory still reads
-// this workspace. A folder directly inside `git_modules/` is a module clone, never the workspace.
+// this workspace.
 const workspaceRoot = () => {
   for (let d = path.dirname(fileURLToPath(import.meta.url)); ; d = path.dirname(d)) {
-    const inGitModules = path.basename(path.dirname(d)) === "git_modules"
-    if (!inGitModules && existsSync(path.join(d, "package-lock.json"))) return d
+    if (existsSync(path.join(d, "package-lock.json"))) return d
     if (path.dirname(d) === d) throw new Error(`workspace root (package-lock.json) not found above ${import.meta.url}`)
   }
 }

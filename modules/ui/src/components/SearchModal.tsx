@@ -34,7 +34,7 @@ const quietCls = "m-0 border-t border-hairline"
 
 const isMore = (e: SearchHit | SearchMore): e is SearchMore => "count" in e
 
-/** The collections the nav lists, in its order (layers' own rows are theirs, not this workspace's). */
+/** The collections the nav lists, in its order. */
 function navCollections(nodes: readonly NavNode[]): string[] {
   const out: string[] = []
   const walk = (list: readonly NavNode[]) => {

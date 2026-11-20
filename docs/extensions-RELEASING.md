@@ -63,7 +63,7 @@ npx dreamteamer compile && npx dreamteamer check
 
 ## the engine floor
 
-Delivering these modules as one package — through npm or as a `git_modules/` clone — needs engine
+Delivering these modules as one package through npm needs engine
 **0.24.0**, the release that taught discovery to unpack a `modules/` folder. Copying a single module
 folder into `modules/` works on older engines. Each module declares the engine range *it* needs in
 its own `package.json`; the package-level floor is enforced by `npx dt-extensions doctor`.

@@ -13,7 +13,7 @@
 //   fields       status, binding and heartbeat are dropped (core 0.9.0 has none of them)
 //   transcripts  a transcript under ${env:FILES_FOLDER}/sessions/<rel> moves to ${env:SESSIONS_FOLDER}/<rel>
 //                and the field is rewritten
-//   sources      the workspace's own session-bindings/ sources are deleted (a layer's or a package's are
+//   sources      the workspace's own session-bindings/ sources are deleted (a package's are
 //                not this workspace's: compile names them as retired and ignores them)
 //   hooks        core 0.8.0's Stop entry (`… dt-hook.sh" session heartbeat --hook`) leaves .claude/settings.json
 //

@@ -3,7 +3,7 @@
  * the Vue ui's pages/ActivityPane.vue): git history as named entries, newest first, grouped by day — who, when,
  * the message, and the records it touched, named by their titles and linked (`GET /activity`). Unnarrowed, every
  * module's history merged, each entry marked with its repo's source mark; narrowed to a module (`?module=`), that
- * module's; `?source=` scopes it to one record layer. An npm-installed module has no history here, and says so.
+ * module's; `?source=` scopes it to one source. An npm-installed module has no history here, and says so.
  *
  * A commit opens the way Source Control opens one, through the host (`dt:command dreamteamer.viewCommit`) — a
  * browser host that knows no such command ignores it. Paged 20 at a time; the host says whether an older page
