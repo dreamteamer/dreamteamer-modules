@@ -17,6 +17,8 @@ __pycache__/
 .vscode/
 # every module's build (scripts/build.ts; ui and ui-legacy by Vite) and the render-tier bundles, never sources
 modules/*/dist/
+# ephemeral per-process TypeScript build descriptors
+modules/*/.tsconfig.build.[0-9]*.json
 modules/ui-legacy/.test-build/
 # the ui playground's sample workspaces (playground/dev.ts)
 playground/.workspaces/

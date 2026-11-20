@@ -83,27 +83,21 @@ test("an API error or any other answer stops the publish before npm runs", () =>
   }
 })
 
-test(
-  "the release gate reaches grep through -f, never with the pattern as an argument",
-  {
-    skip: "the release gate's private-name check is off until its hit is found — a task in the project records turns both back on",
-  },
-  () => {
-    const outsideF = leakGateRun().replaceAll(`<(printf '%s' "$LEAK_NAMES")`, "<(…)")
-    assert.doesNotMatch(outsideF, /grep[^\n]*\$\{?LEAK_NAMES/)
-    assert.doesNotMatch(
-      leakGateRun(),
-      /xargs[^\n]*-f <\(/,
-      "xargs would hand a drained pipe to every batch after the first"
-    )
-    assert.match(
-      leakGateRun(),
-      /xargs -r grep -lIiE -f "\$pat"/,
-      "the tree scan reads the pattern from a file every batch can read"
-    )
-    assert.match(leakGateRun(), /trap 'rm -f "\$pat"' EXIT/, "the pattern file is removed on exit")
-  }
-)
+test("the release gate reaches grep through -f, never with the pattern as an argument", () => {
+  const outsideF = leakGateRun().replaceAll(`<(printf '%s' "$LEAK_NAMES")`, "<(…)")
+  assert.doesNotMatch(outsideF, /grep[^\n]*\$\{?LEAK_NAMES/)
+  assert.doesNotMatch(
+    leakGateRun(),
+    /xargs[^\n]*-f <\(/,
+    "xargs would hand a drained pipe to every batch after the first"
+  )
+  assert.match(
+    leakGateRun(),
+    /xargs -r grep -lIiE -f "\$pat"/,
+    "the tree scan reads the pattern from a file every batch can read"
+  )
+  assert.match(leakGateRun(), /trap 'rm -f "\$pat"' EXIT/, "the pattern file is removed on exit")
+})
 
 test("the gates run before publish: tag==version, tests", () => {
   const names = steps.map(s => s.name ?? s.run ?? "")

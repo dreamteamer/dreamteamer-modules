@@ -5,9 +5,12 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { repo, releaseStep, runStep } from "./harness.ts"
+import { repo, releaseStep, runStep, workflow } from "./harness.ts"
 
-const gate = releaseStep(/leak gate/)
+const gates = [
+  ["tag release", releaseStep(/leak gate/)],
+  ["bulk release", workflow("release-all.yml").jobs.gates.steps.find(s => /leak gate/.test(s.name ?? ""))],
+]
 const realXargs = execFileSync("bash", ["-c", "command -v xargs"], { encoding: "utf8" }).trim()
 
 function tree(where) {
@@ -20,7 +23,7 @@ function tree(where) {
   return r
 }
 
-function run(r) {
+function run(r, gate) {
   const shim = fs.mkdtempSync(path.join(os.tmpdir(), "shim-"))
   fs.writeFileSync(path.join(shim, "xargs"), `#!/bin/sh\nexec ${realXargs} -n 50 "$@"\n`, { mode: 0o755 })
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "runner-"))
@@ -30,23 +33,18 @@ function run(r) {
   })
 }
 
-for (const where of ["last", "first"]) {
-  test(
-    `the token in the ${where} file is found across batches`,
-    {
-      skip: "the release gate's private-name check is off until its hit is found — a task in the project records turns both back on",
-    },
-    () => {
-      const r = run(tree(where))
+for (const [route, gate] of gates) {
+  for (const where of ["last", "first"]) {
+    test(`${route}: the token in the ${where} file is found across batches`, () => {
+      const r = run(tree(where), gate)
       assert.equal(r.status, 1, r.stdout)
       assert.match(r.stdout, /::error::.*private name/)
       assert.match(r.stdout, where === "last" ? /zzz-last\.txt/ : /aaa-first\.txt/)
-      assert.doesNotMatch(r.stdout, /the published tree is clean/)
-    }
-  )
+      assert.doesNotMatch(r.stdout, /the published tree is clean|qqtokenzz/)
+    })
+  }
+  test(`${route}: with the token in no file the gate passes`, () => {
+    const r = run(tree("none"), gate)
+    assert.equal(r.status, 0, r.stdout)
+  })
 }
-
-test("with the token in no file the gate passes", () => {
-  const r = run(tree("none"))
-  assert.equal(r.status, 0, r.stdout)
-})
