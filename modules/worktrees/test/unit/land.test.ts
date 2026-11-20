@@ -288,49 +288,15 @@ describe("planLand — the steps, in the order they run", () => {
   })
 })
 
-// ⚠ THE SEAM BETWEEN TWO TASKS, and the one thing a per-task review could not see. `createWorktree`
-// (checkout.js) learned to mirror a shadowing `git_modules/<name>` symlink into a new worktree;
-// `land` makes a SECOND worktree — the throwaway the rebase runs in — and never got the same fix.
-// `git_modules/` is gitignored, so the copy had none, and `land` runs only `compile` there, never
-// `install`. The copy therefore compiled without a whole module and ran the `check` gate against
-// fewer collections than the workspace has, silently.
 describe("mirrorModules — the copy compiles with the SAME modules as the primary", () => {
-  const mk = () => {
+  test("node_modules is mirrored into the temp tree as one link", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "dt-mirror-"))
-    fs.mkdirSync(path.join(root, "primary", "git_modules"), { recursive: true })
     fs.mkdirSync(path.join(root, "primary", "node_modules"), { recursive: true })
     fs.mkdirSync(path.join(root, "temp"), { recursive: true })
-    fs.mkdirSync(path.join(root, "elsewhere", "extra"), { recursive: true })
-    return root
-  }
-
-  test("a SYMLINKED git_modules entry is mirrored into the temp tree", () => {
-    const root = mk()
-    fs.symlinkSync(path.join(root, "elsewhere", "extra"), path.join(root, "primary", "git_modules", "extra"), "dir")
     mirrorModules(path.join(root, "primary"), path.join(root, "temp"))
-    const at = path.join(root, "temp", "git_modules", "extra")
-    assert.ok(
-      fs.existsSync(at),
-      "the shadowing module never reached the copy — check would run against fewer collections"
-    )
-    assert.equal(fs.realpathSync(at), fs.realpathSync(path.join(root, "elsewhere", "extra")))
-  })
-
-  // LINKS ONLY, for the reason createWorktree gives: a real clone under git_modules/ is
-  // per-checkout working state, and linking it would hand two checkouts one working tree.
-  test("a REAL git_modules clone is left alone", () => {
-    const root = mk()
-    fs.mkdirSync(path.join(root, "primary", "git_modules", "hr"), { recursive: true })
-    mirrorModules(path.join(root, "primary"), path.join(root, "temp"))
-    assert.equal(fs.existsSync(path.join(root, "temp", "git_modules", "hr")), false)
-  })
-
-  test("node_modules is still mirrored, and no git_modules folder is invented when there is none", () => {
-    const root = mk()
-    fs.rmSync(path.join(root, "primary", "git_modules"), { recursive: true })
-    mirrorModules(path.join(root, "primary"), path.join(root, "temp"))
-    assert.ok(fs.existsSync(path.join(root, "temp", "node_modules")))
-    assert.equal(fs.existsSync(path.join(root, "temp", "git_modules")), false)
+    const at = path.join(root, "temp", "node_modules")
+    assert.ok(fs.lstatSync(at).isSymbolicLink())
+    assert.equal(fs.realpathSync(at), fs.realpathSync(path.join(root, "primary", "node_modules")))
   })
 })
 

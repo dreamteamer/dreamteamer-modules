@@ -29,7 +29,6 @@ test("h5 — migration edges", () => {
     if (args.includes("--json")) {
       const j = JSON.parse(r.out)
       for (const k of ["planned", "set", "cannot_tell", "failed"]) assert.deepEqual(j[k], [], k)
-      assert.deepEqual(j.layers, {})
     } else assert.match(r.out, /nothing to set|0 set/)
   }
   assert.equal(execFileSync("git", ["status", "--porcelain", "data/"], { cwd: ws, encoding: "utf8" }), "")

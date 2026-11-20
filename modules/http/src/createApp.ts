@@ -21,8 +21,8 @@ const GIT_TIMEOUT_MS = 30_000
  * The express app for one workspace. `ws` is the handle from `dt.openWorkspace`; its `root` is the
  * workspace the shared handler (@dreamteamer/protocol) answers for — the same host side the VS Code
  * extension runs in-process, so dt serve answers every route with the extension's shapes and cannot fall
- * behind it. The handler loads the WORKSPACE's own engine (the one `dt` resolves: a `git_modules/dreamteamer`
- * shadow, else `node_modules/dreamteamer`) and re-opens it before every compile-gated write.
+ * behind it. The handler loads the WORKSPACE's own engine (`node_modules/dreamteamer`) and re-opens it before
+ * every compile-gated write.
  *
  * In front of it, the TRANSPORT rules only a network host has: `Host` and `Origin` must be this server's own
  * (403), a token when one is set (401), and a write's body must be JSON (415). A same-origin or Origin-less

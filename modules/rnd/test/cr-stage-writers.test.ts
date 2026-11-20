@@ -1,8 +1,6 @@
 // THE STAGE WRITERS — the lifecycle keeps a change request's `stage` current as it moves the request: each
 // stage's skill and the review whose approve moves it spell the write, `stage=` LAST on the line (so the
-// 0.7.0 tag pins stay whole and leaving it out is dropping the last token). Rule (a): only on a request
-// that already carries a stage or lives in the workspace's own root, retried without `stage` when the
-// request's home refuses the field. The filing reads the target layer instead. A step that sends a request
+// 0.7.0 tag pins stay whole and leaving it out is dropping the last token). A step that sends a request
 // back writes the stage of the earliest gate `dt next --json` names.
 import { test, describe } from "node:test"
 import assert from "node:assert"
@@ -13,9 +11,6 @@ const RND = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 const skill = s => fs.readFileSync(path.join(RND, "skills", s, "SKILL.md"), "utf8")
 const agent = a => fs.readFileSync(path.join(RND, "agents", `${a}.agent.md`), "utf8")
 const lit = s => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-
-const RULE_A = "already carries a `stage` or whose `$repo` in `dt get rnd/change-requests/<id> --json` is `.`"
-const RETRY = "run the same `dt set` again without `stage`"
 
 describe("each writer spells its stage write, stage last", () => {
   const ROWS = [
@@ -59,37 +54,18 @@ describe("each writer spells its stage write, stage last", () => {
   })
 })
 
-describe("rule (a), the filing rule, and the send-back", () => {
-  const WRITERS = [
-    "rnd-design",
-    "recording-reviews",
-    "rnd-plan",
-    "rnd-implement",
-    "rnd-test",
-    "rnd-deploy",
-    "rnd-release",
-  ]
-  for (const s of WRITERS)
-    test(`${s} carries rule (a) and the retry without stage`, () => {
-      assert.match(skill(s), lit(RULE_A))
-      assert.match(skill(s), lit(RETRY))
-    })
+describe("the stage writers, and the send-back", () => {
   for (const a of ["rnd-agent", "qa-manager"])
-    test(`${a} carries rule (a) and names stage among what it writes`, () => {
-      assert.match(agent(a), lit(RULE_A))
-      assert.match(agent(a), lit(RETRY))
-      assert.match(agent(a), /`stage`/)
-    })
+    test(`${a} names stage among what it writes`, () => assert.match(agent(a), /`stage`/))
   test("the rnd-agent writes stage only through a stage", () => {
     assert.match(agent("rnd-agent"), /never outside a stage/)
   })
 
-  test("rnd-change-request reads the target layer before filing into it", () => {
-    const t = skill("rnd-change-request")
-    assert.match(t, lit(`dt list rnd/change-requests -w <layer> --where '{"stage":{"_nempty":true}}'`))
-    assert.match(t, /pass `--stage` only when it lists one/)
-    assert.match(t, /own root, always/)
-    assert.match(t, lit("run the same `dt add` again without `--stage`"))
+  test("rnd-change-request files into the workspace and leaves later stages to the lifecycle", () => {
+    assert.match(
+      skill("rnd-change-request"),
+      /every later stage moves `stage` as it moves the request; never set it by hand/
+    )
   })
 
   test("the send-back reads dt next --json and maps every binding; recording-reviews carries the whole table", () => {
@@ -113,12 +89,5 @@ describe("rule (a), the filing rule, and the send-back", () => {
       ["rnd--review--change-requests--deploy", "live-check"],
     ]
     for (const [b, s] of map) assert.match(t, lit(`| \`${b}\` | \`${s}\` |`), b)
-  })
-
-  test("no skill writes a stage without rule (a) beside it", () => {
-    for (const s of fs.readdirSync(path.join(RND, "skills"))) {
-      const t = skill(s)
-      if (/stage=[a-z]/.test(t) && s !== "rnd-change-request") assert.match(t, lit(RULE_A), s)
-    }
   })
 })

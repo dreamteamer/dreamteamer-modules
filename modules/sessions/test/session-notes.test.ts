@@ -1,13 +1,11 @@
 // A RECORD'S SESSIONS (cr-modules-010, line 6, the sessions half; rnd/tests cr-modules-010-t6): `dt next <ref>`
 // carries one note per sessions record whose records list the ref — its text names `sessions/<sid>`,
-// because the engine keeps only id, text and by — read at call time from every root the workspace reads,
-// a layer's records included. A record no session lists has no note. Nothing is written to the record.
+// because the engine keeps only id, text and by — read at call time. A record no session lists has no note. Nothing is written to the record.
 import { test, describe, after } from "node:test"
 import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
-import { execFileSync } from "node:child_process"
-import { cleanup, engineMeets, pkgOf, editPkg, ENGINE_VERSION } from "../../../tests/helpers/workspace.ts"
+import { cleanup, engineMeets, pkgOf, ENGINE_VERSION } from "../../../tests/helpers/workspace.ts"
 import { dt, sessionsWorkspace } from "./helpers-sessions.ts"
 
 after(cleanup)
@@ -21,28 +19,12 @@ const notesOf = (root, ref) => {
 }
 
 describe("next notes list the sessions that bound a record", { skip }, () => {
-  test("a bound record, a record of a layer, and an unbound record", () => {
-    const root = sessionsWorkspace(
-      ws => {
-        // a record layer: another workspace's data, cloned under git_modules/, read for `tasks`
-        const layer = path.join(ws, "git_modules", "northwind")
-        fs.mkdirSync(path.join(layer, "data", "tasks"), { recursive: true })
-        fs.writeFileSync(
-          path.join(layer, "data", "tasks", "send-the-northwind-quote.task.md"),
-          "---\nname: Send the Northwind quote\nstatus: todo\n---\n"
-        )
-        execFileSync("git", ["init", "-q"], { cwd: layer })
-        editPkg(ws, pkg => {
-          pkg.dreamteamer.git_modules = {
-            northwind: { url: "https://git.example/northwind.git", ref: "main", records: ["tasks"] },
-          }
-        })
-      },
-      { also: ["companies", "tasks"] }
-    )
+  test("two bound records, and an unbound record", () => {
+    const root = sessionsWorkspace(undefined, { also: ["companies", "tasks"] })
     for (const a of [
       ["companies", "--name", "Northwind"],
       ["companies", "--name", "Harbor Mutual"],
+      ["tasks", "--name", "Send the Northwind quote"],
     ])
       assert.equal(dt(root, ["add", ...a]).code, 0)
     const before = fs.readFileSync(path.join(root, "data", "companies", "northwind.company.md"), "utf8")

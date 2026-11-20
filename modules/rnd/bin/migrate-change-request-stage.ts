@@ -7,12 +7,10 @@
 //   npx dreamteamer run @dreamteamer/rnd migrate-change-request-stage --write    # apply it
 //   … [--root <workspace>] [--json]
 //
-// Per change request in the workspace's OWN root:
+// Per change request:
 //   a gate open, stage empty or different     set stage to the gate's (through `dt set`, so the engine validates)
 //   no gate open, stage empty or contradicted  reported with the stages its record allows — never guessed
-// A request a record layer holds is never written: writing `stage` into a layer whose own rnd has no such
-// field turns that workspace's `dt check` red. Each layer is named once, with its count and the --root that
-// migrates it in its own workspace. Order: install, `dt compile`, this, `dt check`; before compile it refuses.
+// Order: install, `dt compile`, this, `dt check`; before compile it refuses.
 import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
@@ -58,7 +56,7 @@ export async function main(argv = process.argv.slice(2), out = console.log) {
   const json = flag("json")
 
   const { dt, cli } = await engineOf(root)
-  // read THIS workspace, even when it sits in another's git_modules/ (the engine climbs out otherwise)
+  // read THIS workspace, even when it sits inside another (the engine climbs out otherwise)
   ;(globalThis as Record<symbol, unknown>)[Symbol.for("dreamteamer.workspace")] = root
   const ws = await dt.openWorkspace(root)
   const store = new dt.Store(ws)
@@ -79,14 +77,9 @@ export async function main(argv = process.argv.slice(2), out = console.log) {
     planned: [] as { id: string; stage: string; was?: string | null }[],
     set: [] as string[],
     cannot_tell: [] as { id: string; reason: string; allowed: string[]; by: string }[],
-    layers: {} as Record<string, number>,
     failed: [] as string[],
   }
   for (const r of readRequests(store, dt)) {
-    if (r.inLayer) {
-      report.layers[r.inLayer] = (report.layers[r.inLayer] ?? 0) + 1
-      continue
-    }
     const stage = (r.stage as string) || null
     if (r.expected) {
       if (stage === r.expected) continue
@@ -133,11 +126,6 @@ export async function main(argv = process.argv.slice(2), out = console.log) {
       const tail = c.by === "hand" ? "set stage by hand" : "set stage to one of them"
       out(
         `cannot tell ${COLLECTION}/${c.id}: ${c.reason} — the record allows ${c.allowed.join(" · ") || "no stage"}; ${tail}`
-      )
-    }
-    for (const [layer, n] of Object.entries(report.layers)) {
-      out(
-        `${layer}: ${n} change request${n === 1 ? "" : "s"} held by the layer — migrate them in its own workspace (--root git_modules/${layer}) once it is on this rnd`
       )
     }
     if (write) out(`${report.set.length} set${report.failed.length ? `, ${report.failed.length} failed` : ""}`)

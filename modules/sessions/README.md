@@ -72,8 +72,7 @@ dt session send <session> "<question>"                # ask a past session, thro
 the workspace the session runs in, so one harness session is one record. Binding again changes
 nothing. There is no claim and no lock: when another session already lists a record, `bind` names it
 in one line and binds anyway. A record's sessions are read when `dt next` asks, from every root the
-open workspace reads; nothing is written to the bound record, so a layer opened on its own sees only
-its own sessions.
+open workspace reads; nothing is written to the bound record.
 
 `dt session send` resumes the session's transcript by its stored `session_id` with
 `claude -p --resume <id> --fork-session`, with no tools, no MCP servers and no hooks, from a temporary
@@ -81,5 +80,5 @@ folder, the question on stdin: the session's own history is untouched and the fo
 needs the transcript on this machine and a claude-code session, and refuses naming which otherwise.
 
 Core 0.8.0's live sessions (session-bindings, `dt session start`, `dt sessions open`, the heartbeat
-and the claim) are gone; a `session-bindings/` folder a layer or an older package still ships compiles
+and the claim) are gone; a `session-bindings/` folder an older package still ships compiles
 with one `retired … ignored` line. `bin/sessions-migrate.mjs` (`npx dt-sessions-migrate`) moves a core 0.8.0 workspace (core's UPDATING 0.9.0).

@@ -1,5 +1,5 @@
 // Records for the change-request stage's held-out tests — written by the test stage, independent of the
-// builder's fixtures (test/helpers/cr-stage-fixtures.mjs and layeredWorkspace are not used here).
+// builder's fixtures (test/helpers/cr-stage-fixtures.mjs is not used here).
 import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"

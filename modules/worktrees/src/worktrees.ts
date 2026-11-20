@@ -89,23 +89,13 @@ export function findWorktree(ws: Workspace, ref: string | undefined, git = defau
  *
  * Every DIRECT dependency that is a SYMLINK here (a dev shadow, `npm link`, a test fixture) is
  * mirrored as the same link — never the node_modules directory itself, which is a real folder
- * holding them. A real install is left to `dt install` in the new tree. Then the same for a
- * shadowing `git_modules/<name>` link: without it the copy falls back to the pinned engine and
- * compiles against a different compiler. LINKS ONLY — a real clone is per-checkout working state.
+ * holding them. A real install is left to `dt install` in the new tree.
  */
 export function mirrorLinkedDeps(fromRoot: string, pkg: Workspace["pkg"] | null | undefined, toRoot: string) {
   const deps = new Set(["dreamteamer", ...Object.keys({ ...pkg?.dependencies, ...pkg?.devDependencies })])
   for (const dep of deps) {
     const from = path.join(fromRoot, "node_modules", dep)
     const to = path.join(toRoot, "node_modules", dep)
-    if (!isLink(from) || fs.existsSync(to)) continue
-    fs.mkdirSync(path.dirname(to), { recursive: true })
-    fs.symlinkSync(fs.realpathSync(from), to, "dir")
-  }
-  const shadows = path.join(fromRoot, "git_modules")
-  for (const name of fs.existsSync(shadows) ? fs.readdirSync(shadows) : []) {
-    const from = path.join(shadows, name)
-    const to = path.join(toRoot, "git_modules", name)
     if (!isLink(from) || fs.existsSync(to)) continue
     fs.mkdirSync(path.dirname(to), { recursive: true })
     fs.symlinkSync(fs.realpathSync(from), to, "dir")

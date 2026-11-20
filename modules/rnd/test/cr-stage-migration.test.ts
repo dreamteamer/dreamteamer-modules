@@ -1,13 +1,12 @@
 // THE STAGE MIGRATION — dist/bin/migrate-change-request-stage.js fills `stage` on a workspace's own change
-// requests from the gate `dt next` names on each, dry run first, and repairs one that drifted. A layer's
-// requests are its own workspace's to migrate: counted and named, never written. A request with no gate
+// requests from the gate `dt next` names on each, dry run first, and repairs one that drifted. A request with no gate
 // open is reported with the stages its record allows, never guessed.
 import { test, describe, after } from "node:test"
 import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
-import { rndWorkspace, layeredWorkspace, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
+import { rndWorkspace, stagelessWorkspace, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
 import { seedStates, settleAll } from "./helpers/cr-stage-fixtures.ts"
 
 after(() => cleanupAll())
@@ -114,44 +113,21 @@ describe("migrate-change-request-stage", () => {
   })
 
   test("refuses on a workspace whose compiled rnd has no stage field, writing nothing", () => {
-    const { layer } = layeredWorkspace({ layerStage: false })
-    put(layer, "data/rnd/products/p.product.md", "---\nname: P\n---\n")
+    const root = stagelessWorkspace()
+    put(root, "data/rnd/products/p.product.md", "---\nname: P\n---\n")
     put(
-      layer,
+      root,
       "data/rnd/change-requests/x.change-request.md",
       "---\nkey: x\nname: x\nproducts:\n  - rnd/products/p\nstatus: suggested\n---\n"
     )
-    const before = snapshot(layer)
-    const r = migrate(layer, "--write")
+    const before = snapshot(root)
+    const r = migrate(root, "--write")
     assert.equal(r.code, 1, r.out)
     assert.match(
       r.out,
       /run dt compile first: the compiled rnd\/change-requests has no stage field\. nothing was written\./
     )
-    assert.deepEqual(snapshot(layer), before)
-  })
-
-  test("a layer's requests are counted and named, never written", () => {
-    const { reader, layer } = layeredWorkspace({ layerStage: false })
-    put(
-      reader,
-      "data/rnd/change-requests/own.change-request.md",
-      "---\nkey: own\nname: own\nproducts:\n  - rnd/products/p\nstatus: suggested\n---\n"
-    )
-    seedStates(layer, { prefix: "l", states: ["design", "plan"], stageOf: () => undefined })
-    settleAll(reader)
-    const before = snapshot(layer)
-    const r = migrate(reader, "--write")
-    assert.equal(r.code, 0, r.out)
-    assert.match(r.out, /set rnd\/change-requests\/own stage=design/)
-    assert.match(
-      r.out,
-      /lay: 2 change requests held by the layer — migrate them in its own workspace \(--root git_modules\/lay\) once it is on this rnd/
-    )
-    assert.deepEqual(snapshot(layer), before, "the layer is not written")
-    const c = run(reader, ["check"])
-    assert.equal(c.status, 0, c.stdout + c.stderr)
-    assert.doesNotMatch(c.stdout, /— stage /)
+    assert.deepEqual(snapshot(root), before)
   })
 
   test("--json", () => {
@@ -165,7 +141,6 @@ describe("migrate-change-request-stage", () => {
       ["s-implement"]
     )
     assert.deepEqual(j.set, [])
-    assert.deepEqual(j.layers, {})
     assert.deepEqual(j.failed, [])
   })
 })

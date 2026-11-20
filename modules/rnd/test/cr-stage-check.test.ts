@@ -6,7 +6,7 @@ import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
 import yaml from "js-yaml"
-import { rndWorkspace, layeredWorkspace, runIn, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
+import { rndWorkspace, put, run, cleanupAll } from "./helpers/rnd-workspace.ts"
 import { seedStates, settleAll, T } from "./helpers/cr-stage-fixtures.ts"
 
 after(() => cleanupAll())
@@ -185,7 +185,7 @@ describe("lib/crStage.mjs — the pure rule", () => {
     assert.deepEqual(allowedStages(at.done), ["done"])
   })
 
-  test("stageWarnings: at most one per request — gate first, then a contradiction, then empty; a layer's empty stage is skipped", () => {
+  test("stageWarnings: at most one per request — gate first, then a contradiction, then empty", () => {
     const rows = [
       { id: "ok", file: "ok.md", stage: "plan", expected: "plan", gate: "rnd--plan--change-requests", fields: at.plan },
       {
@@ -206,24 +206,6 @@ describe("lib/crStage.mjs — the pure rule", () => {
         fields: at.plan,
       },
       { id: "nogate", file: "nogate.md", stage: undefined, expected: null, gate: null, fields: at.implement },
-      {
-        id: "layer",
-        file: "layer.md",
-        stage: undefined,
-        expected: "plan",
-        gate: "rnd--plan--change-requests",
-        fields: at.plan,
-        inLayer: true,
-      },
-      {
-        id: "layer-wrong",
-        file: "lw.md",
-        stage: "test",
-        expected: "plan",
-        gate: "rnd--plan--change-requests",
-        fields: at.plan,
-        inLayer: true,
-      },
     ]
     const w = stageWarnings(rows)
     assert.deepEqual(
@@ -233,7 +215,6 @@ describe("lib/crStage.mjs — the pure rule", () => {
         ["contra.md", true],
         ["empty.md", true],
         ["nogate.md", true],
-        ["lw.md", true],
       ]
     )
     assert.equal(
@@ -328,19 +309,6 @@ describe("dt check: the stage rule end to end", () => {
     assert.equal(r.status, 0, r.stdout + r.stderr)
     assert.doesNotMatch(r.stdout, /a-live-check/)
     assert.match(r.stdout, /b-live-check\.change-request\.md — stage is live-check but the record is at test-review/)
-  })
-
-  test("a layer's request: silent with no stage, judged when it carries one", () => {
-    const { reader, layer } = layeredWorkspace({ layerStage: true })
-    seedStates(layer, { prefix: "l", states: ["design", "plan"], stageOf: s => (s === "plan" ? "test" : undefined) })
-    settleAll(reader)
-    const r = run(reader, ["check"])
-    assert.equal(r.status, 0, r.stdout + r.stderr)
-    assert.doesNotMatch(r.stdout, /l-design/, "a layer request with no stage is its home workspace's to fill")
-    assert.match(
-      r.stdout,
-      /⚠ git_modules\/lay\/data\/rnd\/change-requests\/l-plan\.change-request\.md — stage is test but the record is at plan/
-    )
   })
 
   test("no warning channel, or no commandsFor: nothing, and no store opened", async () => {
