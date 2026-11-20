@@ -76,10 +76,21 @@ jobs:
           fail=0
           TEXT=$(git grep -I -l -e '.' -- . || true)
           [ -n "$TEXT" ] || { echo "::error::no text files found to scan — the gate would pass vacuously"; exit 1; }
-          # ⚠ TEMPORARILY OFF (2026-11-19), as in release.yml and leak-scan.yml: two tracked files outside every
-          # module match the private-name list and the hit is not yet located. A task in the project records
-          # tracks turning all three back on. The credential and Hebrew checks below still run.
-          echo "::warning::the private-name check is skipped on this release"
+          # A MALFORMED pattern must fail, not pass (finding r1-09, 2026-10-31): grep exits 2 on an invalid
+          # regex, and the `|| true` below would read that as "no hits" — the gate silently off. Probe once.
+          rc=0; printf 'leak-names-probe\n' | grep -iE -f <(printf '%s' "$LEAK_NAMES") >/dev/null 2>&1 || rc=$?
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::secrets.LEAK_NAMES is not a valid extended regex (grep exit $rc), so the private-name check cannot run. Re-set it from the hook's \`names\` mode."
+            exit 1
+          fi
+          pat="$RUNNER_TEMP/leak-names.pat"; trap 'rm -f "$pat"' EXIT
+          printf '%s' "$LEAK_NAMES" > "$pat"
+          hits=$(printf '%s\n' "$TEXT" | xargs -r grep -lIiE -f "$pat" 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "::error::$(printf '%s\n' "$hits" | wc -l | tr -d ' ') tracked file(s) match a private name"
+            printf '%s\n' "$hits" | sed 's/^/  /'
+            fail=1
+          fi
 
           SECRET_SHAPES='sk-ant-[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{32}|ghp_[A-Za-z0-9]{36}|gho_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{50}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]{10,}|glpat-[0-9A-Za-z_-]{20}|npm_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
           hits=$(printf '%s\n' "$TEXT" | xargs -r grep -lIE "$SECRET_SHAPES" 2>/dev/null || true)
@@ -102,7 +113,7 @@ jobs:
           fi
 
           [ "$fail" -eq 0 ] || exit 1
-          echo "✔ the published tree is clean — no credential shape, no Hebrew outside the allow-list"
+          echo "✔ the published tree is clean — no private name, no credential shape, no Hebrew outside the allow-list"
 
       - name: the access decision must be recorded
         env:

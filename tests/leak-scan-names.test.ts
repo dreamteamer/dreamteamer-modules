@@ -47,6 +47,11 @@ const literalsOf = pattern =>
       .replace(/\[ \._\/-\]\?/, " ")
   )
 
+test("the private-name step is not disabled", () => {
+  assert.ok(step, "no step named private names")
+  assert.equal(step.if, undefined)
+})
+
 test("the step defines one names_grep that reads the pattern through -f, and nothing else expands the secret", () => {
   assert.ok(step, "no step named 'private names'")
   assert.match(step.run, /names_grep\(\) \{ grep -icE -f <\(printf '%s' "\$LEAK_NAMES"\) "\$@"; \}/)

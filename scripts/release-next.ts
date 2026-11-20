@@ -155,7 +155,7 @@ async function published(name: string): Promise<boolean> {
 function smoke(engineTgz: string, moduleTgzs: string[], dir: string): void {
   fs.mkdirSync(dir)
   capture("git", ["init", "-q"], dir)
-  capture("git", ["config", "user.email", "smoke@example.com"], dir)
+  capture("git", ["config", "user.email", "release-fixture@example.invalid"], dir)
   capture("git", ["config", "user.name", "Smoke"], dir)
   capture("npm", ["init", "-y"], dir)
   run("npm", ["install", "--no-audit", "--no-fund", "--loglevel=error", engineTgz, ...moduleTgzs], dir)
