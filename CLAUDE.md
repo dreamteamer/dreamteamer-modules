@@ -1,8 +1,7 @@
 # dreamteamer-modules — house rules
 
 One repo, one npm package per module under `modules/<id>/`, each published as `@dreamteamer/<id>`
-and versioned on its own. The root is a private npm workspace and is never a dreamteamer workspace;
-its `"dreamteamer": {}` key exists only so a clone can be previewed as a bundle (`node <clone>/scripts/preview.mjs link <clone>`).
+and versioned on its own. The root is a private npm workspace and is never a dreamteamer workspace.
 
 1. **NO PERSONAL DATA.** No real names, emails, domains, ids, home paths or company names in any
    file, example, comment or commit message. Use the synthetic cast: Dana Oren and Sam Diaz,

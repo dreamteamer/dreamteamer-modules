@@ -5,7 +5,7 @@
 //
 //   node scripts/build.ts                  every module
 //   node scripts/build.ts --module=web     one module (repeatable); a module's `prepack` runs this
-//   node scripts/build.ts --root=<clone>   the modules of another checkout (what `preview.mjs link` builds)
+//   node scripts/build.ts --root=<clone>   the modules of another checkout
 //
 // Everything it writes is under the module's dist/, which mirrors the module root, so a relative import between
 // folders resolves the same in either tree:

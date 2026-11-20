@@ -208,12 +208,8 @@ uv run --project modules/recordings/skills/transcribing-recordings --with pytest
   python -m pytest -q modules/recordings/test/transcribing-recordings
 ```
 
-To try an unreleased change in a real workspace, preview this clone there with
-`node <clone>/scripts/preview.mjs link <clone>`, and `unlink` when done; for one module alone,
-`npx dreamteamer install ./<clone>/modules/<id>`. While a preview is on, a pre-commit guard refuses
-record commits, because a record may not depend on an unpublished schema. A workspace last previewed
-by the removed setup package refuses every commit ("linked bundle has no guard") until you run
-`preview.mjs link` once more, which rewrites its hook.
+To try an unreleased module in a real workspace, install it from this clone:
+`npx dreamteamer install ./<clone>/modules/<id>`.
 
 The house rules — no personal data (the synthetic cast is Dana Oren, Sam Diaz, Northwind, Harbor
 Mutual), every module compiles alone, a module ships only what its `files` names, and a module that

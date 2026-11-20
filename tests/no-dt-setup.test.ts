@@ -1,14 +1,13 @@
 // @dreamteamer/setup IS GONE (cr-dt-007, D70): `dt status` / `dt doctor` / `dt setup` are the engine's
-// since 0.47, and the bundle preview it carried is `scripts/preview.mjs`. No shipped file, doc or script
+// since 0.47. No shipped file, doc or script
 // may still send a reader to `dt-setup` or to the package. What may still name it: UPDATING.md entries
-// (history — what a release changed), tests asserting it is absent, and the preview's legacy hook marker,
-// which recognises a hook an older install wrote.
+// (history — what a release changed) and tests asserting it is absent.
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { ROOT } from "./helpers/workspace.ts"
 
-const ALLOWED = [/(^|\/)UPDATING\.md$/, /(^|\/)tests?\//, /^scripts\/preview\/link\.ts$/]
+const ALLOWED = [/(^|\/)UPDATING\.md$/, /(^|\/)tests?\//]
 
 test("no file outside UPDATING history and the tests of its absence names dt-setup or @dreamteamer/setup", () => {
   const files = execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" }).split("\n").filter(Boolean)

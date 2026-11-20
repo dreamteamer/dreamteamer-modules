@@ -25,11 +25,8 @@ import {
   run,
   cleanup,
   engineReadsFloors,
-  engineMeets,
-  ENGINE_VERSION,
 } from "./helpers/workspace.ts"
 import { serveRegistry, npmInstall, installedVersion } from "./helpers/registry.ts"
-import { main as linkMain } from "../scripts/preview/link-cli.ts"
 
 after(cleanup)
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dtm-floors-"))
@@ -281,58 +278,6 @@ describe("dt compile refuses a half-upgrade npm never saw", { skip }, () => {
     )
     assert.doesNotMatch(c.stderr, /name collision/)
   })
-
-  /** A clone of this repo as `scripts/preview.mjs link` sees one: a bundle root and the two modules under modules/. */
-  function clone(users) {
-    const dir = fs.mkdtempSync(path.join(tmp, "clone-"))
-    fs.writeFileSync(
-      path.join(dir, "package.json"),
-      JSON.stringify({ name: "dreamteamer-modules", private: true, dreamteamer: {} }, null, "\t")
-    )
-    fs.cpSync(users, path.join(dir, "modules", "users"), { recursive: true })
-    fs.cpSync(here("projects"), path.join(dir, "modules", "projects"), {
-      recursive: true,
-      filter: s => !/node_modules/.test(s),
-    })
-    return dir
-  }
-  async function linked(users) {
-    const root = virginWorkspace()
-    const log = console.log
-    console.log = () => {}
-    try {
-      assert.equal(await linkMain([clone(users)], root, "link"), 0)
-    } finally {
-      console.log = log
-    }
-    return root
-  }
-
-  test("a linked clone whose users is behind its projects: preview link, then compile refuses by the floor", async () => {
-    const root = await linked(standIn("users"))
-    const c = run(root, ["compile"])
-    assert.equal(c.status, 1, c.stderr + c.stdout)
-    assert.ok(c.stderr.includes(`this workspace has ${OLD.users}, from git_modules`), c.stderr)
-    assert.ok(
-      c.stderr.includes("fix: bring git_modules/dreamteamer-modules/modules/users to a version in >=0.2.0"),
-      c.stderr
-    )
-  })
-
-  // skipped below engine 0.49 with the rest of the repo: core is a module preset from 0.12.0, and a
-  // workspace previewing this repo reads it only on 0.49 or later
-  test(
-    "a linked clone of this repo as it is compiles — a floor never refuses its own repo",
-    {
-      skip:
-        !engineMeets("core") && `core is a module preset, read by engine 0.49.0 or later; testing ${ENGINE_VERSION}`,
-    },
-    async () => {
-      const root = await linked(here("users"))
-      const c = run(root, ["compile"])
-      assert.equal(c.status, 0, c.stderr + c.stdout)
-    }
-  )
 })
 
 describe("the house rules say so", () => {
