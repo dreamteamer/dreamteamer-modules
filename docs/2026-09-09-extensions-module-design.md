@@ -27,8 +27,8 @@ compile error. The operator's correction — *"i expect this to be in modules fo
 `npm install @dreamteamer/extensions` cherry picking"* — named the shape that was actually wanted, and
 it needed one engine feature rather than a layout trick:
 
-- **engine (0.24.0, unreleased at the time of writing):** a dependency or a `git_modules/` clone whose
-  root carries `modules/` is a **bundle** — its sub-modules are discovered on that channel and the root
+- **engine (0.24.0, unreleased at the time of writing):** a dependency whose root carries `modules/` is a
+  **bundle** (a `git_modules/` clone was one too, until 2026-11-20: the engine removed `git_modules` (git modules and record layers)) — its sub-modules are discovered on that channel and the root
   itself is never compiled; and a **bare `dreamteamer.disable` entry names a whole module**, dropped at
   discovery so compile, status and install all see the same set. Inline `modules/*` never nest. Seven
   tests in `test/integration/module-packages.test.js`.
@@ -109,6 +109,10 @@ Two things were deleted outright rather than scrubbed: `scraping-contacts/refere
 (install-specific; the destination is now derived by name under `${env:FILES_FOLDER}` only).
 
 ## the git_modules root rule, applied to every script
+
+> **Superseded.** 2026-11-20: the engine removed `git_modules` (git modules and record layers). No clone sits under `git_modules/` any more, so every resolver now
+> walks up to `package-lock.json` alone, and `tests/resolvers-skip-git-modules.test.mjs` is deleted.
+> The section below is the reasoning as it stood.
 
 The introspection module learned on 2026-09-08 that a clone under `git_modules/` with its own lockfile
 gets mistaken for the workspace by a "walk up to `package-lock.json`" resolver. Four scripts in the CRM

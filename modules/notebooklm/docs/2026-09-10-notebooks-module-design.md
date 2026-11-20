@@ -143,9 +143,9 @@ pure functions and runs `main` only as the entry point:
   --response-length longer --json`, **never `--mode`** — and exit 1 unless the echoed persona length
   equals what was sent.
 
-The workspace root comes from `lib/capabilities.mjs`'s `findWorkspace`, which already skips a
-candidate directly inside `git_modules/`; `tests/resolvers-skip-git-modules.test.mjs` will pin the
-new file the moment it walks to a lockfile.
+The workspace root comes from `lib/capabilities.mjs`'s `findWorkspace`: the nearest ancestor with
+`package.json` and `package-lock.json`. (It also skipped a candidate directly inside `git_modules/`
+until 2026-11-20: the engine removed `git_modules` (git modules and record layers).)
 
 ## the doctor
 
