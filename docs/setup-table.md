@@ -8,7 +8,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
   inputs or a machine prerequisite, and `status` reads `configured` / `blocked` / `ready` honestly.
 - **no setup** — nothing to set up; `status` reads `no setup`, with `needs: KEY` when the module
   declares an env key or var nobody set.
-- **library** — a package other packages build on (the UI, the protocol): it
+- **library** — a package other packages build on (none today): it
   installs and compiles, contributes no rows, reads `no setup`.
 - **preset** — a module preset (`dreamteamer.preset`, engine 0.49): it ships no source and no unit;
   `dt install` brings every member at its pinned version, and `dt status` lists the preset with its
@@ -29,7 +29,6 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | engagements | companies | no setup | |
 | files | — | unit | files_folder |
 | git-identities | — | unit | — (identities per repo) |
-| http | — | no setup | |
 | knowledge | companies, meetings | no setup | |
 | meeting-docs | six | no setup | |
 | meetings | contacts, companies, users | no setup | |
@@ -38,7 +37,6 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | perspective | — | unit | asana_pat |
 | projects | users | no setup | |
 | proofs | — | no setup | |
-| protocol | — | library | |
 | recordings | meetings | unit | transcription_home, files_folder, inbox_folders |
 | responsibilities | users | no setup | |
 | rnd | — | no setup | |
@@ -47,10 +45,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | search | — | unit | — (qmd on PATH) |
 | sessions | users | no setup (needs SESSIONS_FOLDER) | |
 | tasks | users | no setup | |
-| ui | — | library | |
-| ui-legacy | — | library | |
 | users | — | no setup | |
-| web | — | no setup | |
 | wikis | — | unit | — (qmd on PATH) |
 | workflows | — | no setup | |
 | worktrees | — | no setup | |
