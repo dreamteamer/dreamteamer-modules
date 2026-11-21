@@ -69,7 +69,7 @@ dt install @dreamteamer/connectors-google-workspace
 `nav.yaml` here is core's nav fragment: on install the engine places each member's collection into the
 workspace's own `nav.yaml` — folders Work, People, CRM, Meetings, Library and Activity — but only a
 collection the workspace's file does not name yet. After that the file is yours: drag rows in the
-editor or `dt web`, or edit it by hand.
+desktop app or the editor, or edit it by hand.
 
 ## 0.13.0 — LinkedIn and Google Calendar leave core (cr-modules-018)
 
