@@ -6,9 +6,7 @@
 	// Settings are the engine's (dreamteamer's own tsconfig.json): a checkout RUNS these .ts files through
 	// Node's type stripping, so only erasable syntax is allowed and a relative import names the .ts file.
 	//
-	// Not here: the two browser apps, each bundled with bundler resolution and checked by its own config —
-	// ui-legacy's Vue app by `vue-tsc -p modules/ui-legacy/src/tsconfig.json`, ui's React app by `tsc -p modules/ui/src/tsconfig.json`;
-	// and the rnd prototype's browser files, which are served to a browser as-is.
+	// Not here: the rnd prototype's browser files, which are served to a browser as-is.
 	"compilerOptions": {
 		"target": "es2023",
 		"module": "nodenext",
@@ -31,10 +29,6 @@
 		"**/fixtures/**",
 		"**/*.d.ts",
 		"modules/*/test/**",
-		"modules/ui/src/**",
-		"modules/ui/dist/**",
-		"modules/ui-legacy/src/**",
-		"modules/ui-legacy/dist/**",
 		"modules/*/dist/**"
 	]
 }
