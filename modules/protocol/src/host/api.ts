@@ -3,39 +3,54 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { execFileSync } from "node:child_process"
 import { GIT_SYNC } from "./gitExec.ts"
-import { engine, refreshWorkspace } from "./engine.ts"
+import { engine } from "./engine.ts"
+import { refreshWorkspace } from "./engine/refreshWorkspace.ts"
 import { listFolderImages } from "./listFolderImages.ts"
-import { fileToRecord, loadDescriptors, loadModules, repoOfPath, workspaceModule } from "./fsdata.ts"
-import { loadRuntimeModules, moduleOfRuntimeFile } from "./moduleOf.ts"
+import { loadDescriptors } from "./fsdata.ts"
+import { workspaceModule } from "./fsdata/workspaceModule.ts"
+import { repoOfPath } from "./fsdata/repoOfPath.ts"
+import { loadModules } from "./fsdata/loadModules.ts"
+import { fileToRecord } from "./fsdata/fileToRecord.ts"
+import { moduleOfRuntimeFile } from "./moduleOf/moduleOfRuntimeFile.ts"
+import { loadRuntimeModules } from "./moduleOf/loadRuntimeModules.ts"
 import {
   ACTIVITY_BUDGET_MS,
   ACTIVITY_GRACE_MS,
   ACTIVITY_PAGE,
   ACTIVITY_READ_RETENTION_MS,
-  activityFeed,
-  moduleScope,
-  recordScopes,
   repoName,
 } from "./activity.ts"
+import { recordScopes } from "./activity/recordScopes.ts"
+import { moduleScope } from "./activity/moduleScope.ts"
+import { activityFeed } from "./activity/activityFeed.ts"
 import { recordTitle } from "./titles.ts"
-import { forgetAhead, locateRecord, repoStateKeys } from "./repoState.ts"
-import {
-  collectionSources,
-  moduleSource,
-  runtimeSources,
-  sourceOfFile,
-  sourcesContext,
-  sourcesStack,
-  withoutSourceClauses,
-} from "./sources.ts"
-import { accessTargets, redactSecrets, unavailableAccess, NOT_AVAILABLE } from "./remoteAccess.ts"
-import { byId, notesFor } from "./nextNotes.ts"
-import { recordDirsOrNone, unreadableReason } from "./recordDirs.ts"
-
+import { forgetAhead } from "./repoState.ts"
+import { repoStateKeys } from "./repoState/repoStateKeys.ts"
+import { locateRecord } from "./repoState/locateRecord.ts"
+import { withoutSourceClauses } from "./sources/withoutSourceClauses.ts"
+import { sourcesStack } from "./sources/sourcesStack.ts"
+import { sourcesContext } from "./sources/sourcesContext.ts"
+import { sourceOfFile } from "./sources/sourceOfFile.ts"
+import { runtimeSources } from "./sources/runtimeSources.ts"
+import { moduleSource } from "./sources/moduleSource.ts"
+import { collectionSources } from "./sources/collectionSources.ts"
+import { NOT_AVAILABLE } from "./remoteAccess.ts"
+import { unavailableAccess } from "./remoteAccess/unavailableAccess.ts"
+import { redactSecrets } from "./remoteAccess/redactSecrets.ts"
+import { accessTargets } from "./remoteAccess/accessTargets.ts"
+import { notesFor } from "./notesFor.ts"
+import { byId } from "./byId.ts"
+import { recordDirsOrNone } from "./recordDirs.ts"
+import { unreadableReason } from "./unreadableReason.ts"
 import type { RemoteAccessProvider } from "./remoteAccess.ts"
 import type { Descriptor, ModuleRecord } from "./fsdata.ts"
 import type { SourceEntry, SourcesContext } from "./sources.ts"
 import type { ActivityPage, ActivityScope, ScopeRead } from "./activity.ts"
+import { gitHistoryMap } from "./api/gitHistoryMap.ts"
+import { revisionParam } from "./api/revisionParam.ts"
+export { gitHistoryMap } from "./api/gitHistoryMap.ts"
+export { parseGitHistory } from "./api/parseGitHistory.ts"
+export { revisionParam } from "./api/revisionParam.ts"
 
 export interface ApiResult {
   status: number
@@ -731,57 +746,7 @@ export class WorkspaceApi {
     return engine().historyDiff(this.store, name, id, hash)
   }
 }
-export function gitHistoryMap(
-  root: string,
-  dirs: string[],
-  repoOf: (dir: string) => string = () => "."
-): Map<string, FileHistory> {
-  const map = new Map<string, FileHistory>()
-  const byRepo = new Map<string, string[]>()
-  for (const dir of dirs) {
-    if (path.relative(root, dir).startsWith("..")) continue
-    const repo = repoOf(dir)
-    byRepo.set(repo, [...(byRepo.get(repo) ?? []), dir])
-  }
-  for (const [repo, repoDirs] of byRepo) {
-    const cwd = path.join(root, repo)
-    const rels = repoDirs.map(dir => path.relative(cwd, dir)).filter(rel => rel && !rel.startsWith(".."))
-    if (!rels.length) continue
-    let out
-    try {
-      out = execFileSync("git", ["log", "--format=%x01%aI%x02%an", "--name-only", "--relative", "--", ...rels], {
-        cwd,
-        ...GIT_SYNC,
-      }).toString()
-    } catch {
-      continue
-    }
-    parseGitHistory(out, line => (repo === "." ? line : path.relative(root, path.join(cwd, line))), map)
-  }
-  return map
-}
-export function parseGitHistory(
-  out: string,
-  keyOf: (line: string) => string,
-  into: Map<string, FileHistory> = new Map()
-): Map<string, FileHistory> {
-  let date = null
-  let author = null
-  for (const line of out.split("\n")) {
-    if (line.startsWith("\x01")) {
-      const [d, a] = line.slice(1).split("\x02")
-      date = d || null
-      author = a || null
-      continue
-    }
-    if (!line) continue
-    const key = keyOf(line)
-    const seen = into.get(key)
-    if (seen) seen.createdBy = author
-    else into.set(key, { modified: date, by: author, createdBy: author })
-  }
-  return into
-}
+
 function gitLastCommit(root: string, file: string) {
   const rel = path.relative(root, file)
   if (rel.startsWith("..")) return null
@@ -843,12 +808,4 @@ function opOf(schema: Record<string, any>, kind: string, verb: string) {
     }
     return fn
   }
-}
-export function revisionParam(value: unknown): string {
-  const v = typeof value === "string" ? value : ""
-  if (v === "HEAD" || /^[0-9a-f]{4,40}$/.test(v)) return v
-  throw new ApiFailure(
-    `${JSON.stringify(String(value ?? "")).slice(0, 60)} is not a commit id — a revision is HEAD or a commit id of 4 to 40 hex characters; nothing was run`,
-    400
-  )
 }

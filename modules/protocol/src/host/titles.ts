@@ -1,18 +1,11 @@
 // Ported from the dreamteamer VS Code extension's host side (src/titles.ts); PROTOCOL.md is the contract it answers.
 import * as fs from "node:fs"
 import * as path from "node:path"
-import {
-  EXT,
-  collectionDir,
-  loadDescriptors,
-  loadUiViews,
-  parseRecord,
-  systemDir,
-  titleField,
-  uiViewFile,
-  recordFileFor,
-  viewLabel,
-} from "./fsdata.ts"
+import { EXT, collectionDir, loadDescriptors, titleField, uiViewFile, viewLabel } from "./fsdata.ts"
+import { recordFileFor } from "./fsdata/recordFileFor.ts"
+import { systemDir } from "./fsdata/systemDir.ts"
+import { parseRecord } from "./fsdata/parseRecord.ts"
+import { loadUiViews } from "./fsdata/loadUiViews.ts"
 import { engine } from "./engine.ts"
 
 import type { Descriptor } from "./fsdata.ts"

@@ -1,6 +1,8 @@
 // Ported from the dreamteamer VS Code extension's host side (src/folder-images.ts); PROTOCOL.md is the contract it answers.
 import * as fs from "node:fs"
 import * as path from "node:path"
+import { naturalCompare } from "./naturalCompare.ts"
+export { naturalCompare } from "./naturalCompare.ts"
 
 export interface EnvRoot {
   name: string
@@ -11,25 +13,7 @@ export function isImageFile(name: string): boolean {
   const ext = name.slice(name.lastIndexOf(".") + 1).toLowerCase()
   return name.includes(".") && IMAGE_EXTS.has(ext)
 }
-export function naturalCompare(a: string, b: string): number {
-  const re = /(\d+)|(\D+)/g
-  const pa = a.match(re) ?? [],
-    pb = b.match(re) ?? []
-  for (let i = 0; i < Math.min(pa.length, pb.length); i++) {
-    const x = pa[i],
-      y = pb[i]
-    const nx = /^\d/.test(x),
-      ny = /^\d/.test(y)
-    if (nx && ny) {
-      const d = Number(x) - Number(y)
-      if (d) return d
-    } else {
-      const d = x.localeCompare(y)
-      if (d) return d
-    }
-  }
-  return pa.length - pb.length
-}
+
 export function listFolderImages(dir: string): string[] {
   try {
     return fs

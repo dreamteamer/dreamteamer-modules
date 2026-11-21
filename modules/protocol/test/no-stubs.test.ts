@@ -15,8 +15,10 @@ test("PROTOCOL.md documents no $stubs key and no stub records", () => {
 
 test("the host side computes no $stubs and reads no stub field", () => {
   const host = path.join(PKG, "src", "host")
-  const hits = fs
-    .readdirSync(host)
+  // every file under host/, its modules' own folders (host/fsdata/, host/nav/, …) included
+  const hits = (fs.readdirSync(host, { recursive: true }) as string[])
+    .filter(f => fs.statSync(path.join(host, f)).isFile())
+    .map(f => f.split(path.sep).join("/"))
     .flatMap(f =>
       read(path.join("src", "host", f))
         .split("\n")

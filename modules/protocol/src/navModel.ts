@@ -10,43 +10,35 @@
 // settings (navGroups · navOrder · navHidden), the flat tree (`buildTree` with no document); with no nav.yaml and an
 // old setting, the legacy tree it drew before (`legacyTree`) until the settings are migrated into nav.yaml. An
 // unreadable nav.yaml draws the flat tree with the message on the workspace node's `notice`.
-import fs from "node:fs"
 import path from "node:path"
 import { engine, engineLoaded } from "./host/engine.ts"
-import {
-  isRuntime,
-  loadDescriptors,
-  loadModules,
-  loadUiViews,
-  moduleDependencies,
-  moduleNamespaces,
-  navViewsOf,
-  viewRow,
-  workspaceModule,
-} from "./host/fsdata.ts"
-import {
-  WORKSPACE_ROUTE,
-  buildTree,
-  collectionRow,
-  folderModule,
-  folderPresentation,
-  groupLabel,
-  hasNavSettings,
-  legacyTree,
-  moduleIcon,
-  navPathKey,
-  rowMarks,
-  moduleLabel,
-  routeFor,
-  shouldFoldOutOfRecordTree,
-  tailOrder,
-} from "./host/nav.ts"
-import { navDocProblems, navProblemsSentence, readNavDoc } from "./navDoc.ts"
-import { collectionSources, sourcesContext } from "./host/sources.ts"
+import { isRuntime, loadDescriptors, moduleDependencies, moduleNamespaces, navViewsOf } from "./host/fsdata.ts"
+import { workspaceModule } from "./host/fsdata/workspaceModule.ts"
+import { viewRow } from "./host/fsdata/viewRow.ts"
+import { loadUiViews } from "./host/fsdata/loadUiViews.ts"
+import { loadModules } from "./host/fsdata/loadModules.ts"
+import { WORKSPACE_ROUTE, navPathKey, rowMarks, routeFor, shouldFoldOutOfRecordTree } from "./host/nav.ts"
+import { moduleLabel } from "./host/nav/moduleLabel.ts"
+import { moduleIcon } from "./host/nav/moduleIcon.ts"
+import { legacyTree } from "./host/nav/legacyTree.ts"
+import { hasNavSettings } from "./host/nav/hasNavSettings.ts"
+import { groupLabel } from "./host/nav/groupLabel.ts"
+import { folderPresentation } from "./host/nav/folderPresentation.ts"
+import { folderModule } from "./host/nav/folderModule.ts"
+import { collectionRow } from "./host/nav/collectionRow.ts"
+import { buildTree } from "./host/nav/buildTree.ts"
+import { navProblemsSentence } from "./navDoc.ts"
+import { readNavDoc } from "./navDoc/readNavDoc.ts"
+import { navDocProblems } from "./navDoc/navDocProblems.ts"
+import { sourcesContext } from "./host/sources/sourcesContext.ts"
+import { collectionSources } from "./host/sources/collectionSources.ts"
 import { codiconFor } from "./host/codiconFor.ts"
 
 import type { NavTarget, NavDoc } from "./navDoc.ts"
 import type { Descriptor, UiView } from "./host/fsdata.ts"
+import { workspaceNavSettings } from "./workspaceNavSettings.ts"
+export { navOpContext } from "./navOpContext.ts"
+export { workspaceNavSettings } from "./workspaceNavSettings.ts"
 
 export interface NavSettings {
   navGroups?: unknown
@@ -69,24 +61,8 @@ export interface NavNode {
   children?: NavNode[]
 }
 
-/** The four nav settings, read from a workspace's `.vscode/settings.json` (JSON with comments) — what
- *  http and web hosts use; the extension passes VS Code's merged configuration instead. */
-export function workspaceNavSettings(root: string): NavSettings {
-  try {
-    const text = fs.readFileSync(path.join(root, ".vscode", "settings.json"), "utf8")
-    const raw = JSON.parse(stripJsonComments(text))
-    return {
-      navGroups: raw["dreamteamer.navGroups"],
-      navOrder: raw["dreamteamer.navOrder"],
-      navHidden: raw["dreamteamer.navHidden"],
-    }
-  } catch {
-    return {}
-  }
-}
-
 /** Comments and trailing commas out of a JSONC text, strings left alone. */
-function stripJsonComments(text: string): string {
+export function stripJsonComments(text: string): string {
   let out = ""
   for (let i = 0, inStr = false; i < text.length; i++) {
     const c = text[i]
@@ -129,25 +105,6 @@ function drawable(doc: NavDoc | null, say: (sentence: string) => void): NavDoc |
   return clean
 }
 
-/** What a nav write is checked against: the rows the tree can draw (`collections`, in drawn tail order — what
- *  applyNavOp places unplaced rows by), every compiled collection (`known`, what a PUT may name: an internal
- *  collection is not drawn but is not unknown) and the declared namespaces. */
-export function navOpContext(root: string): {
-  collections: Set<string>
-  known: Set<string>
-  namespaces: string[]
-} {
-  const descriptors = loadDescriptors(root)
-  const { titleOf } = engine().descriptor
-  return {
-    collections: tailOrder(
-      descriptors.filter(d => !shouldFoldOutOfRecordTree(d)),
-      titleOf
-    ),
-    known: new Set(descriptors.map(d => d.name)),
-    namespaces: [...(engineLoaded() ? engine().namespaces : [])],
-  }
-}
 /** The tree, top to bottom: one `workspace` node whose children are the top level. */
 export function navModel({
   root,

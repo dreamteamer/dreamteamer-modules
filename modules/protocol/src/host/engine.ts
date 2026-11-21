@@ -1,11 +1,18 @@
 // Ported from the dreamteamer VS Code extension's host side (src/engine.ts); PROTOCOL.md is the contract it answers.
-import * as fs from "node:fs"
 import * as path from "node:path"
 import { pathToFileURL } from "node:url"
-import { EngineTooOldError, meetsFloor } from "./floor.ts"
-
+import { EngineTooOldError } from "./floor.ts"
+import { meetsFloor } from "./floor/meetsFloor.ts"
 import type { BelowFloorNotice } from "./floor.ts"
 import type { NavDoc } from "../navDoc.ts"
+import { engineEntry } from "./engine/engineEntry.ts"
+import { engineRoot } from "./engine/engineRoot.ts"
+import { readEngineVersion } from "./engine/readEngineVersion.ts"
+export { engineEntry } from "./engine/engineEntry.ts"
+export { engineRoot } from "./engine/engineRoot.ts"
+export { openWorkspaceAt } from "./engine/openWorkspaceAt.ts"
+export { readEngineVersion } from "./engine/readEngineVersion.ts"
+export { refreshWorkspace } from "./engine/refreshWorkspace.ts"
 
 export interface EngineWorkspace {
   root: string
@@ -190,9 +197,9 @@ export interface InitEngineOptions {
 // through new Function, so a bundler building CommonJS (the VS Code extension) keeps a real dynamic import
 const esmImport = new Function("specifier", "return import(specifier)")
 export const ENGINE_API_VERSION = 1
-let loaded: EngineModules | undefined
+export let loaded: EngineModules | undefined
 /** The workspace's own engine, loaded at run time — whatever version it is, so read as it answers. */
-let loadedApi: Record<string, any> | undefined
+export let loadedApi: Record<string, any> | undefined
 let resolvedBase: string | null = null
 export function engineBase(): string | null {
   return resolvedBase
@@ -204,43 +211,7 @@ export function engine(): EngineModules {
 export function engineLoaded(): boolean {
   return loaded !== undefined
 }
-export function engineRoot(root: string): string {
-  const found = path.join(root, "node_modules", "dreamteamer")
-  if (fs.existsSync(path.join(found, "package.json"))) return found
-  throw new Error("no dreamteamer engine in this workspace — looked in node_modules/dreamteamer (run: npm install)")
-}
-export function readEngineVersion(engineDir: string): string | null {
-  try {
-    const v = JSON.parse(fs.readFileSync(path.join(engineDir, "package.json"), "utf8")).version
-    return typeof v === "string" ? v : null
-  } catch {
-    return null
-  }
-}
-/**
- * The file an engine package resolves `subpath` to (`"."` the public API, `"./records"` the records API): its
- * package.json `exports`, else `main` — never a path guessed here. An engine through 0.49 answers `src/api.js`,
- * a TypeScript engine `dist/api.js`; both say so in their manifest. Null when it names none that exists.
- */
-export function engineEntry(base: string, subpath: string = "."): string | null {
-  const pick = (e: unknown): string | null =>
-    typeof e === "string"
-      ? e
-      : e && typeof e === "object"
-        ? (pick((e as Record<string, unknown>).import) ??
-          pick((e as Record<string, unknown>).node) ??
-          pick((e as Record<string, unknown>).default))
-        : null
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(base, "package.json"), "utf8"))
-    const exported = pkg.exports && typeof pkg.exports === "object" ? pick(pkg.exports[subpath]) : null
-    const target = exported ?? (subpath === "." && typeof pkg.main === "string" ? pkg.main : null)
-    const file = target ? path.join(base, target) : null
-    return file && fs.existsSync(file) ? file : null
-  } catch {
-    return null
-  }
-}
+
 let belowFloor: BelowFloorNotice | null = null
 export function engineBelowFloor(): BelowFloorNotice | null {
   return belowFloor
@@ -355,28 +326,7 @@ export async function initEngine(root: string, opts: InitEngineOptions = {}): Pr
   }
   return loaded
 }
-function declaredVarsOf(pkg: Record<string, any> | undefined): string[] {
+export function declaredVarsOf(pkg: Record<string, any> | undefined): string[] {
   const vars = pkg?.dreamteamer?.vars
   return Array.isArray(vars) ? vars.filter(v => typeof v === "string") : []
-}
-export function openWorkspaceAt(dir: string): Promise<EngineWorkspace> {
-  if (!loadedApi) return Promise.reject(new Error("engine not loaded"))
-  const key = Symbol.for("dreamteamer.workspace")
-  const g = globalThis as Record<symbol, unknown>
-  const had = Object.prototype.hasOwnProperty.call(g, key)
-  const prev = g[key]
-  g[key] = path.resolve(dir)
-  try {
-    return Promise.resolve(loadedApi.openWorkspace(dir))
-  } finally {
-    if (had) g[key] = prev
-    else delete g[key]
-  }
-}
-export async function refreshWorkspace(): Promise<void> {
-  if (!loaded) return
-  const ws = await loadedApi.openWorkspace(loaded.ws.root)
-  loaded.ws = ws
-  loaded.declaredVars = declaredVarsOf(ws.pkg)
-  loaded.namespaces.splice(0, loaded.namespaces.length, ...loadedApi.namespaces(ws.root))
 }
