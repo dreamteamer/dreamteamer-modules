@@ -79,7 +79,7 @@ describe(
       test(`${m} → ${rows[m]}`, () => {
         const root = virginWorkspace()
         const env = { HOME: fs.mkdtempSync(path.join(os.tmpdir(), "dtm-HOME-")) }
-        // an @dreamteamer package named in plain npm `dependencies` (web and http need protocol, web needs ui) is not
+        // an @dreamteamer package named in plain npm `dependencies` (a sibling imported as code) is not
         // in dt install's closure, so npm would fetch it from the registry — where a version this repo has not
         // published yet does not exist. Installed first from the same folder, it is already there when npm looks.
         for (const dep of Object.keys(pkgOf(m).dependencies ?? {}).filter(d => d.startsWith("@dreamteamer/"))) {
