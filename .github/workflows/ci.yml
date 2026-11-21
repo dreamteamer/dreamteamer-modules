@@ -37,16 +37,9 @@ jobs:
 
       - run: npm ci
 
-      # The pane's held-out tests (tests/heldout/cr-modules-017-*) serve @dreamteamer/ui's browser page, which is
-      # built and gitignored. Without this step only the shard whose ui tarball test happened to build it first
-      # could run them; every other shard died at import with "no built app".
-      # Every module's dist/ (scripts/build.ts) before the ui: the ui's bundle imports @dreamteamer/protocol, whose
-      # exports name its build. The test runner builds again before the suites; this one is for the ui.
+      # Every module's dist/ (scripts/build.ts). The test runner builds again before the suites.
       - name: the modules built
         run: npm run build
-
-      - name: the app dt web serves — @dreamteamer/ui built
-        run: npm run build -w modules/ui
 
       - name: does this shard drive a browser
         id: browser

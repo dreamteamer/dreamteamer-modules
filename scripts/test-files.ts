@@ -13,15 +13,6 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 /** A test file by name: TypeScript (most suites), or JavaScript where a module still has some. */
 export const TEST_FILE = /\.test\.(ts|mjs|js)$/
 
-/**
- * The browser apps run their own unit suites — ui-legacy's with its SFC compile (test/ui-suite.test.mjs),
- * ui's under its strict tsconfig (test/repo/ui-suite.test.ts) — so the runner takes only their repo-level
- * files, or each unit file would run twice and once outside the environment it needs.
- */
-export function ownedByAnApp(rel: string): boolean {
-  return /^modules\/ui(-legacy)?\//.test(rel) && rel.endsWith(".test.ts") && !rel.includes("/test/repo/")
-}
-
 /** Every test file under `dir`, skipping installed and generated trees and test fixtures. */
 function walk(dir: string, out: string[] = []): string[] {
   if (!fs.existsSync(dir)) return out
@@ -38,7 +29,6 @@ function walk(dir: string, out: string[] = []): string[] {
 export function collect(root = ROOT) {
   return [...walk(path.join(root, "tests")), ...walk(path.join(root, "modules"))]
     .map(f => path.relative(root, f).split(path.sep).join("/"))
-    .filter(f => !ownedByAnApp(f))
     .sort()
 }
 

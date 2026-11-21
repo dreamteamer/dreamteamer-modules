@@ -16,7 +16,7 @@ const skip =
   !engineMeets(">=0.49.0") && `dt check --alone walks module presets from engine 0.49.0; testing ${ENGINE_VERSION}`
 
 // RELEASE ORDER. The gate packs a module's dreamteamer dependencies and preset members from this repo, but a
-// sibling named in npm `dependencies` (http and web import protocol and ui as code) is installed from the
+// sibling named in npm `dependencies` (one a module imports as code) is installed from the
 // registry. So between the commit that bumps such a sibling and the tag that publishes it, the dependant cannot
 // be judged: npm answers ETARGET. That one window skips, naming the sibling to publish first — and only when
 // the registry really lacks every version the pin accepts. It never skips for the module a release tag is

@@ -162,14 +162,8 @@ jobs:
       # folder missing from `files` fails here rather than in a stranger's install; the other modules'
       # own suites ran in ci.yml on this commit before it could be tagged, and none of them is what
       # this tag publishes. A wave of 16 tags used to run the whole ~10-minute suite 16 times.
-      # @dreamteamer/ui ships its build (dist/lib, dist/app), never committed: built here so its suite tests the
-      # tree that publishes, and again by its prepublishOnly inside npm publish.
-      # Built on EVERY tag, not only ui's: tests/ holds the pane's held-out tests, which import the built app, so a
-      # tag for any other module died at that import (protocol-v0.3.0, 2026-11-15) — the same gap ci.yml closed.
-      - name: build the modules, then the ui (its bundle imports @dreamteamer/protocol's dist/)
-        run: |
-          npm run build
-          npm run build -w modules/ui
+      - name: build the modules
+        run: npm run build
 
       - name: tests
         run: node scripts/test.ts --module=${{ steps.mod.outputs.id }}

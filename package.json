@@ -14,12 +14,9 @@
 		"typecheck": "tsc -p tsconfig.json",
 		"typecheck:test": "tsc -p tests/tsconfig.json",
 		"format": "prettier --write .",
-		"format:check": "prettier --check .",
-		"ui": "node playground/dev.ts",
-		"ui-legacy": "node playground/dev.ts --app=ui-legacy"
+		"format:check": "prettier --check ."
 	},
 	"devDependencies": {
-		"@types/express": "^5.0.6",
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "^22.20.5",
 		"dreamteamer": "^0.50.0",
@@ -34,10 +31,5 @@
 	"dreamteamer": {
 		"harnesses": [],
 		"gitignore_runtime_folder": true
-	},
-	"allowScripts": {
-		"vue-demi@0.14.10": true,
-		"esbuild@0.28.2": true,
-		"fsevents@2.3.3": true
 	}
 }

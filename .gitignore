@@ -15,8 +15,5 @@ __pycache__/
 .dreamteamer/
 .env.example
 .vscode/
-# every module's build (scripts/build.ts; ui and ui-legacy by Vite) and the render-tier bundles, never sources
+# every module's build (scripts/build.ts), never sources
 modules/*/dist/
-modules/ui-legacy/.test-build/
-# the ui playground's sample workspaces (playground/dev.ts)
-playground/.workspaces/

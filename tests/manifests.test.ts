@@ -28,7 +28,6 @@ test("the repo carries every module it is meant to", () => {
     "engagements",
     "files",
     "git-identities",
-    "http",
     "knowledge",
     "meeting-docs",
     "meetings",
@@ -37,7 +36,6 @@ test("the repo carries every module it is meant to", () => {
     "perspective",
     "projects",
     "proofs",
-    "protocol",
     "recordings",
     "responsibilities",
     "rnd",
@@ -46,10 +44,7 @@ test("the repo carries every module it is meant to", () => {
     "search",
     "sessions",
     "tasks",
-    "ui",
-    "ui-legacy",
     "users",
-    "web",
     "wikis",
     "workflows",
     "worktrees",
@@ -94,21 +89,17 @@ for (const m of moduleIds()) {
       }
     })
     test("`files` lists every folder the module carries, and the tarball ships them", () => {
-      // ui and ui-legacy are browser apps built by Vite into their own dist/, and ship their source on purpose
-      const app = m === "ui" || m === "ui-legacy"
       // what ships as its build (scripts/build.ts) rather than as itself: src/ and lib/, a bin/ of TypeScript,
       // and the skills of a module that stages them from dist/skills
       const tsIn = d => fs.existsSync(d) && fs.readdirSync(d).some(f => f.endsWith(".ts") && !f.endsWith(".d.ts"))
-      const built = app
-        ? []
-        : ["src", "lib", "bin", "skills"].filter(k =>
-            k === "skills"
-              ? pkg.dreamteamer?.skills === "dist/skills"
-              : k === "bin"
-                ? tsIn(path.join(MODULES, m, "bin"))
-                : fs.existsSync(path.join(MODULES, m, k))
-          )
-      const present = [...KINDS, "bin", "data", ...(app ? ["src"] : [])].filter(
+      const built = ["src", "lib", "bin", "skills"].filter(k =>
+        k === "skills"
+          ? pkg.dreamteamer?.skills === "dist/skills"
+          : k === "bin"
+            ? tsIn(path.join(MODULES, m, "bin"))
+            : fs.existsSync(path.join(MODULES, m, k))
+      )
+      const present = [...KINDS, "bin", "data"].filter(
         k => !built.includes(k) && fs.existsSync(path.join(MODULES, m, k))
       )
       for (const k of present)
@@ -125,7 +116,7 @@ for (const m of moduleIds()) {
         )
       // a declaration is the build's too: a skill module the package code imports gets its .d.mts beside its .mjs
       const ts = files.filter(f => /\.m?ts$/.test(f) && !/\.d\.m?ts$/.test(f))
-      if (!app) assert.deepEqual(ts, [], "the TypeScript source ships — npm ships its build")
+      assert.deepEqual(ts, [], "the TypeScript source ships — npm ships its build")
     })
     test("the tarball ships no tests, caches or virtualenvs", () => {
       const junk = packedFiles(m).filter(f => /(^|\/)(tests?|__pycache__|\.venv|\.pytest_cache|node_modules)\//.test(f))

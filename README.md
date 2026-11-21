@@ -94,16 +94,13 @@ rows as `core` does, unfolded.
 |---|---|---|
 | [`@dreamteamer/proofs`](modules/proofs) | `dt prove`: behaviour proofs of skills, commands and scripts, answered by exit code | — |
 | [`@dreamteamer/worktrees`](modules/worktrees) | `dt worktree` and `dt land`: a second checkout, and bringing its records home | — |
-| [`@dreamteamer/http`](modules/http) | `dt serve`: a JSON REST api over the same validating store the CLI uses | — |
-| [`@dreamteamer/web`](modules/web) | `dt web`: the UI in your browser over a workspace on your machine — loopback only, live as records change; drag a nav row to rearrange `nav.yaml` | — |
 | [`@dreamteamer/code`](modules/code) | `dt-editor`: the browser editor over local files, with a Claude coordinator (not published to npm) | — |
 | [`@dreamteamer/docker-workspaces`](modules/docker-workspaces) | `dt-docker`: a workspace as a local Docker container, moved between machines as one encrypted file | — |
 
-Two libraries sit under `web`, `http` and the VS Code extension and give a workspace nothing on their
-own: [`@dreamteamer/protocol`](modules/protocol) — the host protocol the UI speaks, the nav document
-(`nav.yaml`) every host reads and writes, and `dt-nav migrate`, which writes a workspace's old nav
-settings into it — and [`@dreamteamer/ui`](modules/ui), the UI as one React app any host mounts.
-[`@dreamteamer/ui-legacy`](modules/ui-legacy) is the Vue app `ui` was through 0.3, over the same host contract; `dt web --app legacy-ui` serves it.
+The UI for people is the dreamteamer desktop app, which loads the engine in-process and owns the protocol between
+its windows and a workspace. `@dreamteamer/web` (`dt web`), `@dreamteamer/http` (`dt serve`),
+`@dreamteamer/protocol`, `@dreamteamer/ui` and `@dreamteamer/ui-legacy` were retired from this repository; the
+versions already on npm still install.
 
 ## Optional personal workspace capabilities
 
