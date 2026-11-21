@@ -228,7 +228,6 @@ async function main(argv: string[]): Promise<void> {
   run("npm", ["run", "typecheck"])
   run("npm", ["run", "format:check"])
   run("npm", ["run", "build"])
-  run("npm", ["run", "build", "-w", "modules/ui"])
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "dtm-release-next-"))
   try {

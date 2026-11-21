@@ -1,7 +1,7 @@
 name: release-all
 
 # Publishes every module whose package.json version npm does not hold yet — or only the modules named — from
-# main, in one run: `gh workflow run release-all.yml` (optionally `-f modules="web ui"`). Running it by hand is
+# main, in one run: `gh workflow run release-all.yml` (optionally `-f modules="tasks rnd"`). Running it by hand is
 # the permission gate, as pushing a tag is for release.yml; a merge to main still publishes nothing.
 #
 # Why it exists beside release.yml: a wave of tags hits GitHub's limit — a push of more than three tags creates
@@ -145,11 +145,8 @@ jobs:
         if: steps.browser.outputs.needed == 'true'
         run: npx -y playwright-core install --with-deps chromium
 
-      # every module's dist/, then the ui's bundle — the pane's held-out tests under tests/ import the built app
-      - name: build the modules, then the ui
-        run: |
-          npm run build
-          npm run build -w modules/ui
+      - name: build the modules
+        run: npm run build
 
       # the repo-wide checks under tests/ plus this module's own suite, as release.yml runs them
       - name: tests
