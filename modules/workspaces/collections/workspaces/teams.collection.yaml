@@ -28,7 +28,7 @@
     },
   "display":
     {
-      "nav": { "icon": "organization", "order": 5 },
+      "nav": { "icon": "group-by-ref-type" },
       "list": { "columns": ["name", "organization", "operators", "workspaces"] },
     },
 }

@@ -4,13 +4,13 @@
 npm install @dreamteamer/workspaces
 ```
 
-Local-only model for desired deployment configuration, independent of `@dreamteamer/work`.
+Requires Dreamteamer 0.53.0 or later. Local-only model for desired deployment configuration, independent of `@dreamteamer/work`.
 GitHub and Bitbucket are modeled providers, not connected services.
 
 ## Model
 
 A configuration snapshot for one organization declares its AI Ops management repository and
-keeps its provider, repository catalog, logical users, scoped roles, operator roster, workspaces,
+keeps its provider, repository catalog, logical users, scoped roles, organization memberships, workspaces,
 Work Areas and assignments together. The management repository is a declared location, not an
 authorization or a Git checkout performed by this module. `--organization` checks snapshot
 self-containment, same-organization scope and presence of an AI Ops role.
@@ -24,9 +24,9 @@ there are no secret identifiers, values, access or resolution.
 Workspaces and Work Areas each use one collection, not parallel template and instance schemas.
 Four view descriptors filter the same records by `is_template`. An instance may point back to a
 same-type, same-organization template with a full Git revision pin. Pins are syntactic only, not a
-claim a remote object exists. Desired assignments point to a Workspace Operator and a workspace
+claim a remote object exists. Desired assignments point to an organization member and a workspace
 instance, with a same-organization AI Ops role as declared provenance, not authenticated authority.
-Operator inventory derives from present assignments rather than a cached list in a Work Area.
+A member’s workspace inventory derives from present assignments rather than a cached list in a Work Area.
 
 The pure grant comparator takes separately supplied, timestamped provider observations. It labels
 matches, drift, unknown, stale and conflicting samples; it never fetches provider state or applies
@@ -52,13 +52,3 @@ contain credentials; the validator is not a secret detector.
 There are no provider calls, clone or grant changes, configuration exports, workspace runtime
 actions, Electron integration or publication in this local slice. View filters are presentation,
 not access control. A real org configuration must be verified independently before creating it.
-
-## Future package installation
-
-This local prerelease candidate has not been published. It targets Dreamteamer 0.53.0 or later. Once separately approved and released:
-
-```sh
-npm install @dreamteamer/workspaces
-```
-
-Until then use the local tarball. A compatible draft workspace can replace its inline module in an isolated rehearsal, keeping its data and validating every reference before making a real change. No automatic migrations or permissions are applied.

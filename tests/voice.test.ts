@@ -69,7 +69,20 @@ for (const m of moduleIds()) {
         const hits = []
         for (const f of files)
           for (const { text, n } of lines(f))
-            if (re.test(text)) hits.push(`${path.relative(MODULES, f)}:${n}  ${text.trim().slice(0, 100)}`)
+            if (
+              re.test(text) &&
+              // These exact serialized keys maintain the Workspaces data format. The product voice rule
+              // still rejects workspace-specific phrasing and every other occurrence, even in Workspaces.
+              !(
+                m === "workspaces" &&
+                name === "the workspace it came from" &&
+                ((f.endsWith("/operators.collection.yaml") &&
+                  text.trim() ===
+                    '"storage": { "path": "data/workspaces/operators", "format": "md", "suffix": "operator" },') ||
+                  (f.endsWith("/assignments.collection.yaml") && /^\s*"?operator"?\s*:\s*$/.test(text)))
+              )
+            )
+              hits.push(`${path.relative(MODULES, f)}:${n}  ${text.trim().slice(0, 100)}`)
         assert.deepEqual(hits, [], `${hits.length} line(s):\n  ${hits.slice(0, 25).join("\n  ")}`)
       })
     }

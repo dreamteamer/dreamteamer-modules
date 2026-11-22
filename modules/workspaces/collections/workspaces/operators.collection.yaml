@@ -1,6 +1,6 @@
 {
   "name": "workspaces/operators",
-  "description": "Organization-local Workspace Operator roster; not an access grant.",
+  "description": "Organization memberships for workspace participants; not access grants.",
   "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
   "storage": { "path": "data/workspaces/operators", "format": "md", "suffix": "operator" },
   "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
@@ -22,7 +22,7 @@
       "work_area":
         {
           "type": "workspaces/work-areas",
-          "description": "Dedicated, non-template Work Area assigned to this operator.",
+          "description": "Dedicated, non-template Work Area assigned to this member.",
         },
       "business_roles":
         {
@@ -49,7 +49,7 @@
     },
   "display":
     {
-      "nav": { "icon": "person", "order": 3 },
+      "nav": { "icon": "person-add" },
       "list": { "columns": ["name", "organization", "work_area", "business_roles", "responsibilities"] },
     },
 }

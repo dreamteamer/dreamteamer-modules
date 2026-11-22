@@ -11,5 +11,5 @@
       "description": { "type": "string" },
       "source_record": { "type": "string", "required": true },
     },
-  "display": { "nav": { "icon": "tag" }, "list": { "columns": ["name", "description", "organization"] } },
+  "display": { "nav": { "icon": "bookmark" }, "list": { "columns": ["name", "description", "organization"] } },
 }

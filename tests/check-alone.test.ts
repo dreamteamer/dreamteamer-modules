@@ -9,7 +9,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import { execFileSync } from "node:child_process"
-import { ROOT, MODULES, SCOPE, moduleIds, pkgOf, run, ENGINE_VERSION } from "./helpers/workspace.ts"
+import { ROOT, MODULES, SCOPE, moduleIds, pkgOf, releaseEngineFor, run, ENGINE_VERSION } from "./helpers/workspace.ts"
 import { engineMeets } from "dreamteamer/testing"
 
 const skip =
@@ -55,7 +55,7 @@ const awaitsSibling = m => {
 describe("dt check modules/<id> --alone, for every module of this repo", { concurrency: 4 }, () => {
   for (const m of moduleIds()) {
     test(`${m} is publishable alone`, { skip: skip || awaitsSibling(m) }, () => {
-      const r = run(ROOT, ["check", `modules/${m}`, "--alone"])
+      const r = run(ROOT, ["check", `modules/${m}`, "--alone"], {}, releaseEngineFor(m))
       const out = `${r.stdout}\n${r.stderr}`
       assert.equal(r.status, 0, `exit ${r.status}\n${out}`)
       assert.deepEqual(

@@ -1,6 +1,6 @@
 {
   "name": "workspaces/work-areas",
-  "description": "Operator configuration instances and same-type templates; no workspace listing or credential data.",
+  "description": "Member configuration instances and same-type templates; no workspace listing or credential data.",
   "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
   "storage": { "path": "data/workspaces/work-areas", "format": "md", "suffix": "work-area" },
   "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
@@ -59,7 +59,7 @@
     },
   "display":
     {
-      "nav": { "icon": "layers", "order": 1 },
+      "nav": { "icon": "layers" },
       "list": { "columns": ["name", "organization", "workspaces", "is_template"] },
     },
 }

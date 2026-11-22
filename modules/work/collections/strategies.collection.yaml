@@ -9,6 +9,7 @@ storage:
 ids:
   from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
+mixins: [work-tags]
 fields:
   name:
     type: string
@@ -18,10 +19,6 @@ fields:
     type: string
     required: true
     description: Specific intent and boundaries; not merely a label.
-  tags:
-    type: string
-    many: true
-    description: Open vocabulary; no enum. Classification labels are not authorization.
   evidence_status:
     type: string
     default: candidate
@@ -107,7 +104,7 @@ fields:
     many: true
 display:
   nav:
-    icon: zap
+    icon: symbol-method
   list:
     layout: table
     columns:

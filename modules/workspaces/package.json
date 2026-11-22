@@ -28,7 +28,7 @@
     "namespaces": [
       "workspaces"
     ],
-    "description": "Local desired workspace catalog, AI Ops repository, Workspace Operator roster and Work Areas. Validates scoped roles and assignments without managing grants, credentials or processes.",
+    "description": "Local desired workspace catalog, AI Ops repository, organization memberships and Work Areas. Validates scoped roles and assignments without managing grants, credentials or processes.",
     "engine": ">=0.53.0",
     "scripts": {
       "check-records": "dist/bin/check-records.js"

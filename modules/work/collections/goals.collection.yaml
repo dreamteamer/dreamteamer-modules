@@ -1,6 +1,6 @@
 name: goals
-description: A concrete operator-specific desired outcome anchoring a session before tasks, documents or CRs; not a timeless principle or product Design Goal.
-use_when: At session start or when selecting and verifying work against a specific operator outcome.
+description: A concrete desired outcome anchoring a session before tasks, documents or CRs; not a timeless principle or product Design Goal.
+use_when: At session start or when selecting and verifying work against a specific outcome.
 sensitive: true
 storage:
   path: data/goals
@@ -9,6 +9,7 @@ storage:
 ids:
   from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
+mixins: [work-tags]
 fields:
   name:
     type: string
@@ -18,10 +19,6 @@ fields:
     type: string
     required: true
     description: Specific intent and boundaries; not merely a label.
-  tags:
-    type: string
-    many: true
-    description: Open vocabulary; no enum. Classification labels are not authorization.
   evidence_status:
     type: string
     default: candidate

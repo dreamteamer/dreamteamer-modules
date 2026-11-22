@@ -25,5 +25,5 @@
           "enum": ["configuration", "content"],
         },
     },
-  "display": { "nav": { "icon": "repo", "order": 7 } },
+  "display": { "nav": { "icon": "repo" } },
 }

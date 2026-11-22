@@ -29,5 +29,5 @@
           "required": true,
         },
     },
-  "display": { "nav": { "icon": "shield", "order": 6 } },
+  "display": { "nav": { "icon": "unlock" } },
 }

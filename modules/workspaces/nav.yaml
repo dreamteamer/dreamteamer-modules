@@ -11,9 +11,9 @@ tree:
       - workspaces/responsibilities
       - workspaces/providers
       - workspaces/repositories
-  - namespace: workspaces
-    hidden: true
-hidden:
-  - workspaces/users
-  - workspaces/assignments
-  - workspaces/roles
+      - folder: Access configuration
+        icon: lock
+        items:
+          - workspaces/users
+          - workspaces/roles
+          - workspaces/assignments

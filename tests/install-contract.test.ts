@@ -15,6 +15,7 @@ import {
   packedInto,
   virginWorkspace,
   run,
+  releaseEngineFor,
   cleanup,
   engineMeets,
   ENGINE_VERSION,
@@ -77,21 +78,22 @@ describe(
   () => {
     for (const m of moduleIds()) {
       test(`${m} → ${rows[m]}`, () => {
-        const root = virginWorkspace()
+        const engine = releaseEngineFor(m)
+        const root = virginWorkspace(engine)
         const env = { HOME: fs.mkdtempSync(path.join(os.tmpdir(), "dtm-HOME-")) }
         // an @dreamteamer package named in plain npm `dependencies` (a sibling imported as code) is not
         // in dt install's closure, so npm would fetch it from the registry — where a version this repo has not
         // published yet does not exist. Installed first from the same folder, it is already there when npm looks.
         for (const dep of Object.keys(pkgOf(m).dependencies ?? {}).filter(d => d.startsWith("@dreamteamer/"))) {
-          const pre = run(root, ["install", dep, "--from", FROM, "--no-input"], env)
+          const pre = run(root, ["install", dep, "--from", FROM, "--no-input"], env, engine)
           assert.ok(
             pre.status === 0 || pre.status === 3,
             `${m}: installing ${dep} first: exit ${pre.status}\n${pre.stderr}`
           )
         }
-        const r = run(root, ["install", `@dreamteamer/${m}`, "--from", FROM, "--no-input"], env)
+        const r = run(root, ["install", `@dreamteamer/${m}`, "--from", FROM, "--no-input"], env, engine)
         assert.ok(r.status === 0 || r.status === 3, `${m}: exit ${r.status}\n${r.stderr}\n${r.stdout.slice(-600)}`)
-        const s = run(root, ["status", "--json"], env)
+        const s = run(root, ["status", "--json"], env, engine)
         assert.equal(s.status, 0, s.stderr)
         const status = JSON.parse(s.stdout)
         const mine = status.setup.filter(l => l.package === `@dreamteamer/${m}`)

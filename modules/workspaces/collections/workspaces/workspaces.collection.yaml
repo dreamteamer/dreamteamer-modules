@@ -34,5 +34,5 @@
           "description": "Whether repository and ref evidence is present; not deployment or access.",
         },
     },
-  "display": { "nav": { "icon": "folder", "order": 2 } },
+  "display": { "nav": { "icon": "folder" } },
 }

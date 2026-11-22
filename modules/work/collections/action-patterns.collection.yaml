@@ -12,6 +12,7 @@ storage:
 ids:
   from: "{{ name | slug }}"
   pattern: ^[a-z0-9][a-z0-9-]*$
+mixins: [work-tags]
 fields:
   name:
     type: string
@@ -21,10 +22,6 @@ fields:
     type: string
     required: true
     description: Specific intent and boundaries; not merely a label.
-  tags:
-    type: string
-    many: true
-    description: Open vocabulary; no enum. Classification labels are not authorization.
   evidence_status:
     type: string
     default: candidate
@@ -87,7 +84,7 @@ fields:
       Change Parent on the child; never maintain this list manually.
 display:
   nav:
-    icon: zap
+    icon: symbol-event
   list:
     columns:
       - name

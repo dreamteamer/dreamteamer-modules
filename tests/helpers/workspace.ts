@@ -51,8 +51,19 @@ export const SCOPE = "@dreamteamer"
 
 /** Run the engine in `cwd` through `dreamteamer/testing`, with a hard timer (a hang is a failure, never a
  *  stuck suite); `env` lays extra variables (a PATH of stand-ins, a unit's keys) over the process's. */
-export const run = (cwd, args, env = {}) =>
-  engineRun({ root: cwd, engine: ENGINE } as Workspace, args, { env, timeoutMs: 60_000 })
+export const run = (cwd, args, env = {}, engine = ENGINE) =>
+  engineRun({ root: cwd, engine } as Workspace, args, { env, timeoutMs: 60_000 })
+
+/** Work and Workspaces start at 0.53. Keep the rest of the baseline matrix and its older-engine refusal cases. */
+export function releaseEngineFor(module: string): string {
+  if (module !== "work" && module !== "workspaces") return ENGINE
+  if (engineMeets(module)) return ENGINE
+  const engine = path.join(ROOT, "node_modules", "dreamteamer-0-53")
+  const actual = JSON.parse(fs.readFileSync(path.join(engine, "package.json"), "utf8")).version
+  assert.equal(actual, "0.53.0")
+  assert.equal(pkgOf(module).dreamteamer.engine, ">=0.53.0", "review the release test engine for a changed floor")
+  return engine
+}
 
 export const moduleIds = () =>
   fs
@@ -82,9 +93,12 @@ export const cleanup = () => {
 }
 
 /** A fresh `dreamteamer init` workspace with the three template variables declared and set. */
-export function virginWorkspace() {
-  assert.ok(fs.existsSync(BIN), `no engine at ${ENGINE} — run npm install, or point DT_ENGINE_DIR at a checkout`)
-  const { root } = createWorkspace({ engine: ENGINE })
+export function virginWorkspace(engine = ENGINE) {
+  assert.ok(
+    fs.existsSync(path.join(engine, "bin", "dreamteamer.js")),
+    `no engine at ${ENGINE} — run npm install, or point DT_ENGINE_DIR at a checkout`
+  )
+  const { root } = createWorkspace({ engine })
   made.push(root)
   editPkg(root, pkg => {
     pkg.name = "probe"

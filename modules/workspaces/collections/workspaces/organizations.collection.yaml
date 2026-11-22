@@ -21,5 +21,5 @@
           "required": true,
         },
     },
-  "display": { "nav": { "icon": "organization", "order": 4 } },
+  "display": { "nav": { "icon": "symbol-namespace" } },
 }

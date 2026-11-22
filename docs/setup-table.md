@@ -47,5 +47,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | tasks | users | no setup | |
 | users | — | no setup | |
 | wikis | — | unit | — (qmd on PATH) |
+| work | projects, tasks, sessions | no setup | |
 | workflows | — | no setup | |
+| workspaces | — | no setup | |
 | worktrees | — | no setup | |

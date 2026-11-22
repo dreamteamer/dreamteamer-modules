@@ -1,0 +1,8 @@
+name: work-tags
+description: Shared free labels for Goals and reusable strategies.
+fields:
+  tags:
+    type: string
+    many: true
+    pattern: '^[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9]+(-[a-z0-9]+)*)?$'
+    description: 'Free labels, lowercase and hyphenated, optionally key:value with no space around the colon.'

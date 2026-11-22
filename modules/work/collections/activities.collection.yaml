@@ -1,7 +1,7 @@
 name: activities
 title: Activities
 singular: Activity
-description: Concrete work advancing one or more operator goals using reusable strategies; not the system commit feed, a strategy definition or a conversation session.
+description: Concrete work advancing one or more goals using reusable strategies; not the system commit feed, a strategy definition or a conversation session.
 use_when: When recording a bounded piece of goal-directed work, its applied methods, progress and outcome within an optional conversation context.
 sensitive: true
 storage:
@@ -52,7 +52,7 @@ constraints:
         minItems: 1
 display:
   nav:
-    icon: checklist
+    icon: list-flat
   list:
     columns:
       - created

@@ -11,5 +11,5 @@
       "description": { "type": "string" },
       "source_record": { "type": "string", "required": true },
     },
-  "display": { "nav": { "icon": "checklist" }, "list": { "columns": ["name", "description", "organization"] } },
+  "display": { "nav": { "icon": "checklist-compact" }, "list": { "columns": ["name", "description", "organization"] } },
 }

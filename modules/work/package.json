@@ -19,7 +19,8 @@
     "UPDATING.md",
     "nav.yaml",
     "collections",
-    "ui-views"
+    "ui-views",
+    "mixins"
   ],
   "dreamteamer": {
     "title": "Work",
@@ -34,13 +35,14 @@
     "dependencies": [
       "@dreamteamer/projects",
       "@dreamteamer/tasks",
-      "@dreamteamer/sessions"
+      "@dreamteamer/sessions",
+      "@dreamteamer/users"
     ]
   },
-  "dependencies": {
-    "@dreamteamer/projects": "0.5.0",
-    "@dreamteamer/tasks": "0.4.1",
-    "@dreamteamer/sessions": "0.2.1",
-    "@dreamteamer/users": "0.4.0"
+  "peerDependencies": {
+    "@dreamteamer/projects": ">=0.5.0",
+    "@dreamteamer/tasks": ">=0.4.1",
+    "@dreamteamer/sessions": ">=0.2.1",
+    "@dreamteamer/users": ">=0.4.0"
   }
 }

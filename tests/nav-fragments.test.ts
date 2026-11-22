@@ -25,8 +25,8 @@ const owned = m =>
 
 describe("every fragment a manifest names", () => {
   const shipping = moduleIds().filter(m => pkgOf(m).dreamteamer?.nav)
-  test("core, rnd and knowledge name one, and nothing else does", () => {
-    assert.deepEqual(shipping, ["core", "knowledge", "rnd"])
+  test("only the declared navigable modules provide fragments", () => {
+    assert.deepEqual(shipping, ["core", "knowledge", "rnd", "work", "workspaces"])
   })
   for (const m of shipping) {
     test(`${m}: the file is in files and in the tarball, and holds only a tree`, () => {

@@ -33,7 +33,7 @@
       "operator":
         {
           "type": "workspaces/operators",
-          "description": "Workspace Operator granted an instance listing in desired state.",
+          "description": "Organization member intended to see the workspace instance.",
           "required": true,
         },
       "assigned_by":
@@ -43,5 +43,5 @@
           "required": true,
         },
     },
-  "display": { "nav": { "icon": "link", "order": 5 } },
+  "display": { "nav": { "icon": "link" } },
 }
