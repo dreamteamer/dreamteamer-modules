@@ -1,0 +1,21 @@
+route: /work/goals/graph
+scope: collection
+collection: collections/goals
+description: All Goals including archived Goals, using stored Parent Goal links. Status appears in labels. Diagram renderer capabilities depend on the client version.
+display:
+  nav:
+    title: Graph
+    icon: type-hierarchy
+  list:
+    layout: diagram
+    columns:
+      - name
+      - parent_goal
+      - status
+    options:
+      link_by: references
+      ref_fields:
+        - parent_goal
+      node: dot
+      label_template: "{{ name }} · {{ status }}"
+      page_size: 1000

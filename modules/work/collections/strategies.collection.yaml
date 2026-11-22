@@ -1,0 +1,123 @@
+name: strategies
+title: Strategies
+sensitive: true
+description: Reusable operational, conversational, and unblocking strategies. Classification does not grant authority.
+storage:
+  path: data/strategies
+  format: md
+  suffix: strategy
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: Concrete name identifying the outcome or reusable pattern.
+  description:
+    type: string
+    required: true
+    description: Specific intent and boundaries; not merely a label.
+  tags:
+    type: string
+    many: true
+    description: Open vocabulary; no enum. Classification labels are not authorization.
+  evidence_status:
+    type: string
+    default: candidate
+    description: Open vocabulary, e.g. candidate, corroborated, verified. Verified requires explicit evidence of validation, not just a transcript mention.
+  sources:
+    type: markdown
+    description: Shareable bibliographic references only. Keep restricted evidence separate.
+  validation:
+    type: markdown
+    description: Generic validation limits and conditions for using the method; not private case findings or an unsupported effectiveness claim.
+  content:
+    type: markdown
+    body: true
+    description: Detailed interpretation, proposed steps, scope and constraints distinct from evidence.
+  conversation_patterns:
+    title: Conversational Strategies
+    type: conversation-patterns
+    many: true
+    description: Conversational strategies this operational strategy may invoke.
+  prerequisites:
+    type: markdown
+    description: Required evidence, scope and authority before acting.
+  permission_boundary:
+    type: markdown
+    description: Authorized internal steps versus human-owned/external actions; not standing approval.
+  status:
+    type: string
+    default: active
+    description: "Lifecycle status: active or archived. Separate from evidence status; archived records remain resolvable."
+  use_when:
+    type: markdown
+    description: When this outcome or reusable strategy should guide the current session.
+  reclassification:
+    type: markdown
+    description: Why a prior draft was archived or reclassified; original evidence remains available.
+  goal_classes:
+    type: string
+    many: true
+    description: Open shared labels for goal category and operational-strategy applicability; not conversation purpose.
+  output_expectations:
+    type: markdown
+    description: Intended outputs; distinguish proposed artifacts from observed writes.
+  conversation_types:
+    type: string
+    many: true
+    description: Open labels describing conversational purpose, separate from goal class.
+  category:
+    type: string
+    title: Category
+    enum:
+      - operational
+      - conversational
+      - unblocking
+    required: true
+  source_category:
+    type: string
+    title: Original Category
+    enum:
+      - operational
+      - conversational
+  source_record:
+    type:
+      - action-patterns
+      - conversation-patterns
+    title: Source Record
+    unique: true
+  source_parent:
+    type:
+      - action-patterns
+      - conversation-patterns
+    title: Original Parent Strategy
+  parent_strategy:
+    type: strategies
+    title: Parent Strategy
+  children:
+    type: strategies
+    title: Sub Strategies
+    many: true
+    mirror_of: parent_strategy
+  related_strategies:
+    type: strategies
+    title: Related Strategies
+    many: true
+display:
+  nav:
+    icon: zap
+  list:
+    layout: table
+    columns:
+      - name
+      - category
+      - source_category
+      - parent_strategy
+      - children
+      - status
+      - source_record
+    options:
+      group_by: category
+    sort: name

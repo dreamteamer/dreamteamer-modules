@@ -1,0 +1,24 @@
+route: /tasks/blocked
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _eq: blocked
+display:
+  nav:
+    title: Blocked
+    icon: warning
+    order: 40
+  list:
+    layout: table
+    columns:
+      - last_modified
+      - name
+      - status
+      - assignee
+      - item
+    sort: -last_modified
+    options:
+      show_ungrouped_rows: true
+      show_empty_rows: false
+      page_size: 100

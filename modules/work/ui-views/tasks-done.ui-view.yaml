@@ -1,0 +1,13 @@
+route: /tasks/done
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _eq: done
+display:
+  nav:
+    title: Done
+    icon: list-unordered
+    order: 50
+  list:
+    layout: table

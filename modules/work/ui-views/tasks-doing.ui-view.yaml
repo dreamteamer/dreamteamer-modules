@@ -1,0 +1,26 @@
+route: /tasks/doing
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _eq: doing
+display:
+  nav:
+    title: Doing
+    icon: list-unordered
+    order: 30
+  list:
+    layout: table
+    columns:
+      - created
+      - name
+      - status
+      - assignee
+      - due
+      - project
+      - tags
+      - last_modified
+    sort: -created
+    options:
+      show_ungrouped_rows: true
+      show_empty_rows: false

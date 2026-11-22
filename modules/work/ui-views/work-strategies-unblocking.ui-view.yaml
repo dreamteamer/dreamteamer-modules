@@ -1,0 +1,19 @@
+route: /work/strategies/unblocking
+scope: collection
+collection: collections/strategies
+description: Filtered from the one Strategies catalog.
+filter:
+  category:
+    _eq: unblocking
+display:
+  nav:
+    title: Unblocking
+    icon: list-unordered
+  list:
+    layout: table
+    columns:
+      - name
+      - status
+      - parent_strategy
+      - children
+    sort: name

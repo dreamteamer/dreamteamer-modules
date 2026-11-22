@@ -1,0 +1,15 @@
+{
+  "name": "workspaces/responsibilities",
+  "title": "Responsibilities",
+  "description": "Organization taxonomy; not a provider permission.",
+  "storage": { "path": "data/workspaces/responsibilities", "format": "md", "suffix": "responsibility" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "required": true },
+      "organization": { "type": "workspaces/organizations", "required": true },
+      "description": { "type": "string" },
+      "source_record": { "type": "string", "required": true },
+    },
+  "display": { "nav": { "icon": "checklist" }, "list": { "columns": ["name", "description", "organization"] } },
+}

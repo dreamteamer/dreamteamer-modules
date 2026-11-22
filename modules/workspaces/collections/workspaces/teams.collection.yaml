@@ -1,0 +1,34 @@
+{
+  "name": "workspaces/teams",
+  "description": "Proposed organization-local team membership and workspace access policy. Never applied to Bitbucket.",
+  "storage": { "path": "data/workspaces/teams", "format": "md", "suffix": "team" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Team label.", "required": true },
+      "organization":
+        { "type": "workspaces/organizations", "description": "The owning organization.", "required": true },
+      "read_workspaces":
+        { "type": "workspaces/workspaces", "description": "Proposed read targets only.", "many": true },
+      "write_workspaces":
+        { "type": "workspaces/workspaces", "description": "Proposed write targets only.", "many": true },
+      "operators":
+        {
+          "type": "workspaces/operators",
+          "description": "Explicit proposed members, not inferred from roles.",
+          "many": true,
+        },
+      "workspaces":
+        {
+          "type": "workspaces/workspaces",
+          "description": "Project workspace associations. This field does not assign permissions.",
+          "many": true,
+        },
+      "source_record": { "type": "string", "description": "Pinned authority for membership and project scope." },
+    },
+  "display":
+    {
+      "nav": { "icon": "organization", "order": 5 },
+      "list": { "columns": ["name", "organization", "operators", "workspaces"] },
+    },
+}

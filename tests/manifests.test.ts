@@ -46,7 +46,9 @@ test("the repo carries every module it is meant to", () => {
     "tasks",
     "users",
     "wikis",
+    "work",
     "workflows",
+    "workspaces",
     "worktrees",
   ])
 })

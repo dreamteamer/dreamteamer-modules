@@ -1,0 +1,51 @@
+{
+  "name": "@dreamteamer/workspaces",
+  "version": "0.1.0",
+  "description": "Typed desired organization, Git repository and workspace assignments; local validation only, never provisioning.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+    "directory": "modules/workspaces"
+  },
+  "keywords": [
+    "dreamteamer",
+    "dreamteamer-module"
+  ],
+  "files": [
+    "README.md",
+    "collections",
+    "ui-views",
+    "dist",
+    "nav.yaml"
+  ],
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "dreamteamer": {
+    "title": "Workspaces",
+    "namespaces": [
+      "workspaces"
+    ],
+    "description": "Local desired workspace catalog, AI Ops repository, Workspace Operator roster and Work Areas. Validates scoped roles and assignments without managing grants, credentials or processes.",
+    "engine": ">=0.53.0",
+    "scripts": {
+      "check-records": "dist/bin/check-records.js"
+    },
+    "ignore": [
+      "examples"
+    ],
+    "nav": "nav.yaml"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/desired-state.d.ts",
+      "import": "./dist/src/desired-state.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/build.ts --module=workspaces"
+  }
+}

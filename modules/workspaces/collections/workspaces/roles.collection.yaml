@@ -1,0 +1,33 @@
+{
+  "name": "workspaces/roles",
+  "description": "Desired roles for workspace deployment configuration. Records do not grant permissions or prove applied state.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/roles", "format": "md", "suffix": "role" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "organization":
+        { "type": "workspaces/organizations", "description": "Only this organization is in scope.", "required": true },
+      "user":
+        {
+          "type": "workspaces/users",
+          "description": "Desired role holder, not authenticated identity.",
+          "required": true,
+        },
+      "role":
+        {
+          "type": "string",
+          "description": "UI responsibility, never authorization proof.",
+          "required": true,
+          "enum": ["super-admin", "ai-ops", "end-user"],
+        },
+      "configuration_repository":
+        {
+          "type": "workspaces/repositories",
+          "description": "Organization-scoped configuration repository containing this user inventory.",
+          "required": true,
+        },
+    },
+  "display": { "nav": { "icon": "shield", "order": 6 } },
+}

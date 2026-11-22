@@ -1,0 +1,28 @@
+route: /work/tasks/active
+scope: collection
+collection: collections/tasks
+description: To Do, Doing, or Blocked only. This is a filtered view of the native Tasks table, not another work register.
+filter:
+  status:
+    _in:
+      - todo
+      - doing
+      - blocked
+display:
+  nav:
+    title: Active
+    icon: play
+    order: -1
+  list:
+    layout: table
+    columns:
+      - name
+      - status
+      - assignee
+      - item
+      - sessions
+      - last_modified
+    sort: -last_modified
+    options:
+      page_size: 100
+      show_empty_rows: false

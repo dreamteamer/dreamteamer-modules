@@ -1,0 +1,14 @@
+route: /work/goals/by-parent
+scope: collection
+collection: collections/goals
+description: Optional flat grouping by Parent, not a recursively nested tree. Includes an ungrouped band; active records only.
+filter:
+  status:
+    _eq: active
+display:
+  list:
+    layout: table
+    sort: -created
+    options:
+      group_by: parent_goal
+      show_ungrouped_rows: true

@@ -1,0 +1,21 @@
+route: /work/goals/active
+scope: collection
+collection: collections/goals
+filter:
+  status:
+    _eq: active
+display:
+  list:
+    layout: table
+    sort: -created
+    columns:
+      - created
+      - name
+      - target_date
+      - goal_classes
+      - children
+      - status
+    options:
+      group_by: parent_goal
+      show_ungrouped_rows: true
+description: Optional Active-only direct route; archived records remain available in the separate Archived view and by stable record link.

@@ -1,0 +1,31 @@
+name: sessions
+overlay: true
+sensitive: true
+fields:
+  work_status:
+    type: string
+    title: Status
+    description: Evidence-backed status of the work tracked by this Session; unknown stays empty. Ended does not mean done.
+    enum:
+      planned:
+        label: Planned
+      active:
+        label: Active
+        color: charts.orange
+      blocked:
+        label: Blocked
+        color: charts.red
+      verified_done:
+        label: Verified done
+        color: charts.green
+  blocker_reason:
+    type: string
+    title: Blocker
+    maxLength: 240
+    description: Brief observed reason for blocked work. Keep restricted material separate.
+  goals:
+    type: goals
+    many: true
+    description: Goals directly associated with this Session.
+  description:
+    title: Recap

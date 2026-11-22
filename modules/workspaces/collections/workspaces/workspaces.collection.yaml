@@ -1,0 +1,38 @@
+{
+  "name": "workspaces/workspaces",
+  "description": "Desired workspaces for workspace deployment configuration. Records do not grant permissions or prove applied state.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/workspaces", "format": "md", "suffix": "workspace" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "organization":
+        {
+          "type": "workspaces/organizations",
+          "description": "Owning organization; composition does not confer access.",
+          "required": true,
+        },
+      "repositories":
+        {
+          "type": "workspaces/repositories",
+          "many": true,
+          "description": "Explicit content repository composition; no cross-organization implicit access.",
+        },
+      "is_template":
+        {
+          "type": "boolean",
+          "description": "True for a reusable template; false for an assignable instance.",
+          "required": true,
+        },
+      "template": { "type": "workspaces/workspaces", "description": "Optional same-type source template." },
+      "template_revision":
+        { "type": "string", "description": "Immutable full Git commit SHA of the same-type source template." },
+      "configured":
+        {
+          "type": "boolean",
+          "description": "Whether repository and ref evidence is present; not deployment or access.",
+        },
+    },
+  "display": { "nav": { "icon": "folder", "order": 2 } },
+}

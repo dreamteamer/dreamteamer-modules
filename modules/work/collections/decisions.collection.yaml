@@ -1,0 +1,19 @@
+name: decisions
+overlay: true
+fields:
+  goals:
+    type: goals
+    many: true
+    description: Goals whose outcome, scope or acceptance is affected by this decision. The association confers no authority.
+  sessions:
+    type: sessions
+    many: true
+    description: Recap-only Sessions carrying decision evidence; legacy free-text session remains intact.
+  strategies:
+    type: strategies
+    many: true
+    description: Strategies adopted, evaluated or constrained by this decision. Association does not approve their use.
+  tasks:
+    type: tasks
+    many: true
+    description: Tasks governed or unblocked by the decision. Author this relation here; the reciprocal list on Task is generated.

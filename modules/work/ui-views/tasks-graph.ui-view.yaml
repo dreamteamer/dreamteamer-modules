@@ -1,0 +1,25 @@
+route: /work/tasks/graph
+scope: collection
+collection: collections/tasks
+description: Tasks are linked by their Item and prerequisite references. Unlinked Tasks remain visible.
+display:
+  nav:
+    title: Graph
+    icon: type-hierarchy
+    order: 4
+  list:
+    layout: diagram
+    columns:
+      - name
+      - status
+      - item
+      - depends_on
+    options:
+      link_by: references
+      ref_fields:
+        - item
+        - depends_on
+      node: dot
+      hide_leaves: false
+      label_template: "{{ name }} · {{ status }}"
+      page_size: 1000

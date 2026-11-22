@@ -1,0 +1,9 @@
+tree:
+  - folder: Work
+    icon: briefcase
+    items:
+      - tasks
+      - sessions
+      - goals
+      - strategies
+      - decisions

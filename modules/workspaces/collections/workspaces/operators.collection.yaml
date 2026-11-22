@@ -1,0 +1,55 @@
+{
+  "name": "workspaces/operators",
+  "description": "Organization-local Workspace Operator roster; not an access grant.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/operators", "format": "md", "suffix": "operator" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "organization":
+        {
+          "type": "workspaces/organizations",
+          "description": "Organization managing this membership.",
+          "required": true,
+        },
+      "user":
+        {
+          "type": "workspaces/users",
+          "description": "Logical user with an end-user role in this organization.",
+          "required": true,
+        },
+      "work_area":
+        {
+          "type": "workspaces/work-areas",
+          "description": "Dedicated, non-template Work Area assigned to this operator.",
+        },
+      "business_roles":
+        {
+          "type": "workspaces/business-roles",
+          "description": "Normalized organization roles, not permission roles.",
+          "many": true,
+        },
+      "responsibilities":
+        {
+          "type": "workspaces/responsibilities",
+          "description": "Normalized published internal responsibility labels, not grants.",
+          "many": true,
+        },
+      "source_person":
+        {
+          "type": "string",
+          "description": "Stable people identifier in the organization’s independently maintained source inventory.",
+        },
+      "configured":
+        {
+          "type": "boolean",
+          "description": "Whether this record has the verified configuration inputs required for access modeling. Not a deployment observation.",
+        },
+    },
+  "display":
+    {
+      "nav": { "icon": "person", "order": 3 },
+      "list": { "columns": ["name", "organization", "work_area", "business_roles", "responsibilities"] },
+    },
+}

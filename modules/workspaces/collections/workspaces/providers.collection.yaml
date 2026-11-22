@@ -1,0 +1,25 @@
+{
+  "name": "workspaces/providers",
+  "description": "Desired providers for workspace deployment configuration. Records do not grant permissions or prove applied state.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/providers", "format": "md", "suffix": "provider" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "kind":
+        {
+          "type": "string",
+          "description": "Git provider adapter kind; no API client is implemented.",
+          "required": true,
+          "enum": ["github", "bitbucket"],
+        },
+      "host":
+        {
+          "type": "string",
+          "description": "Bare provider hostname. No path, credentials, query or fragment.",
+          "required": true,
+        },
+    },
+  "display": { "nav": { "icon": "server", "order": 8 } },
+}

@@ -1,0 +1,13 @@
+name: tasks
+overlay: true
+fields:
+  decisions:
+    type: decisions
+    many: true
+    mirror_of: tasks
+    description: Generated decisions that list this Task; record the relationship on the Decision, not here.
+  sessions:
+    type: sessions
+    many: true
+    mirror_of: tasks
+    description: Recap-only Sessions that name this Task; write the link on the Session.

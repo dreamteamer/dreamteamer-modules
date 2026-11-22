@@ -1,0 +1,19 @@
+tree:
+  - workspaces/work-areas
+  - workspaces/workspaces
+  - folder: Config
+    icon: settings-gear
+    items:
+      - workspaces/organizations
+      - workspaces/teams
+      - workspaces/operators
+      - workspaces/business-roles
+      - workspaces/responsibilities
+      - workspaces/providers
+      - workspaces/repositories
+  - namespace: workspaces
+    hidden: true
+hidden:
+  - workspaces/users
+  - workspaces/assignments
+  - workspaces/roles

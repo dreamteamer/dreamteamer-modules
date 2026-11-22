@@ -1,0 +1,29 @@
+{
+  "name": "workspaces/repositories",
+  "description": "Desired repositories for workspace deployment configuration. Records do not grant permissions or prove applied state.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/repositories", "format": "md", "suffix": "repository" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "organization":
+        { "type": "workspaces/organizations", "description": "Owning desired organization scope.", "required": true },
+      "slug":
+        { "type": "string", "description": "Repository slug inside the organization namespace.", "required": true },
+      "ref":
+        {
+          "type": "string",
+          "description": "Intended Git branch, tag or immutable commit; observation is separate.",
+          "required": true,
+        },
+      "purpose":
+        {
+          "type": "string",
+          "description": "Configuration inventory or workspace content.",
+          "required": true,
+          "enum": ["configuration", "content"],
+        },
+    },
+  "display": { "nav": { "icon": "repo", "order": 7 } },
+}

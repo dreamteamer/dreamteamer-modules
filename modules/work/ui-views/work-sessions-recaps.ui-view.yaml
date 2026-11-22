@@ -1,0 +1,21 @@
+route: /work/sessions/recaps
+scope: collection
+collection: collections/sessions
+description: Newest Started first. Last Modified is the Git history date when available, not session activity. Recap is the short description, not a transcript.
+display:
+  list:
+    layout: table
+    columns:
+      - started
+      - last_modified
+      - created
+      - name
+      - work_status
+      - blocker_reason
+      - harness
+      - description
+      - goals
+    sort: -started
+  nav:
+    title: Recaps
+    icon: note

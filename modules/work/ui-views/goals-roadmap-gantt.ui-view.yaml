@@ -1,0 +1,35 @@
+route: /work/goals/roadmap
+scope: collection
+collection: collections/goals
+description: Active and Suggested goals explicitly given both proposed planning dates. Dates are scenarios, not actual starts, Target Dates, authorizations or promises. Direct Parent Goal organizes bands without inferring any parent commitment. Goals without proposed windows remain in Roadmap · Unscheduled.
+filter:
+  status:
+    _in:
+      - active
+      - suggested
+  roadmap_finish:
+    _nnull: true
+display:
+  nav:
+    title: Gantt
+    icon: calendar
+    order: 2
+  list:
+    layout: gantt
+    columns:
+      - name
+      - roadmap_start
+      - roadmap_finish
+      - target_date
+      - parent_goal
+      - status
+    sort: roadmap_start
+    options:
+      start: roadmap_start
+      end: roadmap_finish
+      group_by: parent_goal
+      show_ungrouped_rows: true
+      start_collapsed: false
+      fold_gaps: false
+      color_by: status
+      template: "{{ name }} · {{ status }} (proposed)"

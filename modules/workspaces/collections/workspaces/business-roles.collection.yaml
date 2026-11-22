@@ -1,0 +1,15 @@
+{
+  "name": "workspaces/business-roles",
+  "title": "Roles",
+  "description": "Organization taxonomy; not a provider permission.",
+  "storage": { "path": "data/workspaces/business-roles", "format": "md", "suffix": "business-role" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "required": true },
+      "organization": { "type": "workspaces/organizations", "required": true },
+      "description": { "type": "string" },
+      "source_record": { "type": "string", "required": true },
+    },
+  "display": { "nav": { "icon": "tag" }, "list": { "columns": ["name", "description", "organization"] } },
+}

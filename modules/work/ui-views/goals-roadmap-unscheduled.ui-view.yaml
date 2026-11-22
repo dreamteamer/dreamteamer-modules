@@ -1,0 +1,24 @@
+route: /work/goals/roadmap/unscheduled
+scope: collection
+collection: collections/goals
+description: Active and Suggested goals without a proposed roadmap finish. An actual Target Date is independent. No Created or parent date is substituted for planning.
+filter:
+  status:
+    _in:
+      - active
+      - suggested
+  roadmap_finish:
+    _null: true
+display:
+  list:
+    layout: table
+    columns:
+      - name
+      - created
+      - target_date
+      - children
+      - status
+    sort: -created
+    options:
+      group_by: parent_goal
+      show_ungrouped_rows: true

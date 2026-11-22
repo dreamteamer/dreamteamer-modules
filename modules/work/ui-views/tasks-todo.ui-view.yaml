@@ -1,0 +1,13 @@
+route: /tasks/todo
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _eq: todo
+display:
+  nav:
+    title: To Do
+    icon: list-unordered
+    order: 20
+  list:
+    layout: table

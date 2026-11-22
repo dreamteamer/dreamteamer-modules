@@ -1,0 +1,18 @@
+# Presentation filter only; authorization belongs to the host.
+route: /workspaces/workspaces/templates
+scope: collection
+collection: collections/workspaces/workspaces
+filter:
+  is_template:
+    _eq: true
+display:
+  list:
+    layout: table
+    columns:
+      - name
+      - organization
+    sort: name
+  nav:
+    title: Templates
+    icon: symbol-structure
+    order: 2

@@ -1,0 +1,17 @@
+{
+  "name": "workspaces/users",
+  "description": "Desired users for workspace deployment configuration. Records do not grant permissions or prove applied state.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/users", "format": "md", "suffix": "user" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "subject":
+        {
+          "type": "string",
+          "description": "Opaque logical user identifier, not an authenticated principal or bearer credential.",
+          "required": true,
+        },
+    },
+}

@@ -1,0 +1,101 @@
+name: goals
+description: A concrete operator-specific desired outcome anchoring a session before tasks, documents or CRs; not a timeless principle or product Design Goal.
+use_when: At session start or when selecting and verifying work against a specific operator outcome.
+sensitive: true
+storage:
+  path: data/goals
+  format: md
+  suffix: goal
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: Concrete name identifying the outcome or reusable pattern.
+  description:
+    type: string
+    required: true
+    description: Specific intent and boundaries; not merely a label.
+  tags:
+    type: string
+    many: true
+    description: Open vocabulary; no enum. Classification labels are not authorization.
+  evidence_status:
+    type: string
+    default: candidate
+    description: Open vocabulary, e.g. candidate, corroborated, verified. Verified requires explicit evidence of validation, not just a transcript mention.
+  sources:
+    type: markdown
+    description: "Weak bibliographic citations: originating workspace, native source ID/path, timestamp range, revision, attribution/conditions and what was actually read. Not live semantic relationships; source deletion must not erase provenance."
+  validation:
+    type: markdown
+    description: What was checked, counterexamples, missing evidence and conditions needed before promotion.
+  content:
+    type: markdown
+    body: true
+    description: Detailed interpretation, proposed steps, scope and constraints distinct from evidence.
+  target_date:
+    type: date
+    title: Target Date
+    description: Optional target date explicitly supplied by the owner; leave empty until specified.
+  success_criteria:
+    type: markdown
+    description: Observable completion criteria and who confirms them.
+  context:
+    type: reference
+    many: true
+    description: Verified semantic project or other local context references.
+  status:
+    type: string
+    default: active
+    description: "Lifecycle status: active or archived. Separate from evidence status; archived records remain resolvable."
+  use_when:
+    type: markdown
+    description: When this outcome or reusable strategy should guide the current session.
+  reclassification:
+    type: markdown
+    description: Why a prior draft was archived or reclassified; original evidence remains available.
+  goal_classes:
+    type: string
+    many: true
+    description: Open shared labels for goal category and operational-strategy applicability; not conversation purpose.
+  parent_goal:
+    type: goals
+    title: Parent Goal
+    description: Optional same-type parent. No inherited authority. Self-parent and cycles are not engine-enforced; review the hierarchy before saving changes.
+  children:
+    type: goals
+    title: Sub Goals
+    many: true
+    mirror_of: parent_goal
+    description: Read-only built-in association generated from Parent on each child. Change Parent on the child; never maintain this list manually.
+  sessions:
+    type: sessions
+    many: true
+    mirror_of: goals
+    description: Derived read-only Sessions associated with this Goal.
+  roadmap_start:
+    type: date
+    title: Proposed Roadmap Start
+    description: Optional planned start; separate from actual activity or authorization.
+  roadmap_finish:
+    type: date
+    title: Proposed Roadmap Finish
+    description: Optional planned finish; separate from the target date and actual completion.
+display:
+  nav:
+    icon: target
+  list:
+    columns:
+      - created
+      - name
+      - status
+      - target_date
+      - children
+      - goal_classes
+    sort: -created
+    options:
+      group_by: parent_goal
+      show_ungrouped_rows: true

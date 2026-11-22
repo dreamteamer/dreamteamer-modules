@@ -1,0 +1,46 @@
+{
+  "name": "@dreamteamer/work",
+  "version": "0.2.0",
+  "description": "Goals, strategies and optional task, session, and decision associations.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+    "directory": "modules/work"
+  },
+  "keywords": [
+    "dreamteamer",
+    "dreamteamer-module",
+    "work"
+  ],
+  "files": [
+    "README.md",
+    "UPDATING.md",
+    "nav.yaml",
+    "collections",
+    "ui-views"
+  ],
+  "dreamteamer": {
+    "title": "Work",
+    "description": "Reusable goals, strategies and shared Work views with typed task, session and decision associations. No data or execution authority.",
+    "engine": ">=0.53.0",
+    "nav": "nav.yaml",
+    "peer_collections": [
+      "tasks",
+      "sessions",
+      "decisions"
+    ],
+    "dependencies": [
+      "@dreamteamer/projects",
+      "@dreamteamer/tasks",
+      "@dreamteamer/sessions"
+    ]
+  },
+  "dependencies": {
+    "@dreamteamer/projects": "0.5.0",
+    "@dreamteamer/tasks": "0.4.1",
+    "@dreamteamer/sessions": "0.2.1",
+    "@dreamteamer/users": "0.4.0"
+  }
+}

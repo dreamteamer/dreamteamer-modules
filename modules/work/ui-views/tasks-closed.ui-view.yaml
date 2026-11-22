@@ -1,0 +1,13 @@
+route: /tasks/closed
+scope: collection
+collection: collections/tasks
+filter:
+  status:
+    _eq: closed
+display:
+  nav:
+    title: Closed
+    icon: list-unordered
+    order: 60
+  list:
+    layout: table

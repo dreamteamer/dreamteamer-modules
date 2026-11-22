@@ -1,0 +1,63 @@
+name: activities
+title: Activities
+singular: Activity
+description: Concrete work advancing one or more operator goals using reusable strategies; not the system commit feed, a strategy definition or a conversation session.
+use_when: When recording a bounded piece of goal-directed work, its applied methods, progress and outcome within an optional conversation context.
+sensitive: true
+storage:
+  path: data/activities
+  format: md
+  suffix: activity
+ids:
+  from: '{{ name | slug }}'
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: A specific piece of work, not a generic method or timeless principle.
+  description:
+    type: string
+    required: true
+    description: Intended contribution to the linked goals and the bounded scope of work.
+  goals:
+    type: goals
+    many: true
+    required: true
+    description: One or more concrete outcomes this activity advances. A relationship is intent, not proof of completion.
+  operational_strategies:
+    type: action-patterns
+    title: Operational Strategies
+    many: true
+    description: Reusable operational methods actually applied to this work, not merely suggested candidates or new authority.
+  conversational_strategies:
+    type: conversation-patterns
+    title: Conversational Strategies
+    many: true
+    description: Reusable conversational methods actually applied, independently or through an operational method.
+  session:
+    type: sessions
+    description: Optional single conversation or sitting-of-work context. Many activities may reference the same native Session; no inverse or new fields are added to Session.
+  status:
+    type: string
+    default: planned
+    description: Open lifecycle label such as planned, active, blocked, completed or cancelled. Completion needs outcome evidence; a session ending does not complete the activity or goals.
+  content:
+    type: markdown
+    body: true
+    description: Local execution context, starting state, decisions, evidence-backed progress, outcome, unresolved blockers and agreed next steps. Preserve authority boundaries; do not copy raw private transcripts unnecessarily.
+constraints:
+  - properties:
+      goals:
+        minItems: 1
+display:
+  nav:
+    icon: checklist
+  list:
+    columns:
+      - created
+      - name
+      - status
+      - goals
+      - session
+    sort: -created

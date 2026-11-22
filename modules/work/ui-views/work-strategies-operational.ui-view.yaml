@@ -1,0 +1,19 @@
+route: /work/strategies/operational
+scope: collection
+collection: collections/strategies
+description: Filtered from the one Strategies catalog.
+filter:
+  category:
+    _eq: operational
+display:
+  nav:
+    title: Operational
+    icon: list-unordered
+  list:
+    layout: table
+    columns:
+      - name
+      - status
+      - parent_strategy
+      - children
+    sort: name

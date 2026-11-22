@@ -1,0 +1,18 @@
+route: /work/tasks/all
+scope: collection
+collection: collections/tasks
+description: Unfiltered Tasks, including Done, Closed and Suggested.
+display:
+  nav:
+    title: All Tasks
+    icon: list-unordered
+    order: 70
+  list:
+    layout: table
+    columns:
+      - name
+      - status
+      - assignee
+      - item
+      - last_modified
+    sort: -last_modified

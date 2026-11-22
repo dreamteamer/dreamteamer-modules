@@ -1,0 +1,10 @@
+route: /work/goals/archived
+scope: collection
+collection: collections/goals
+filter:
+  status:
+    _eq: archived
+display:
+  list:
+    layout: table
+    sort: -created

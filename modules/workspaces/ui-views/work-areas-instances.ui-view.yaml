@@ -1,0 +1,21 @@
+# Presentation filter only; authorization belongs to the host.
+route: /workspaces/work-areas/instances
+scope: collection
+collection: collections/workspaces/work-areas
+filter:
+  is_template:
+    _eq: false
+display:
+  list:
+    layout: table
+    columns:
+      - name
+      - organization
+      - workspaces
+      - configuration_repository
+      - marketplace_policy
+    sort: name
+  nav:
+    title: Instances
+    icon: list-flat
+    order: 1

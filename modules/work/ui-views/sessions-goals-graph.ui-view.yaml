@@ -1,0 +1,24 @@
+route: /work/sessions/goals-graph
+scope: collection
+collection: collections/sessions
+description: Sessions with typed Goal and Task links. Unlinked Sessions remain visible.
+display:
+  nav:
+    title: Sessions Graph
+    icon: type-hierarchy
+  list:
+    layout: diagram
+    columns:
+      - name
+      - work_status
+      - goals
+    sort: -started
+    options:
+      link_by: references
+      ref_fields:
+        - goals
+        - tasks
+      node: box
+      label_template: "{{ name }} {{ work_status }}"
+      hide_leaves: false
+      page_size: 100

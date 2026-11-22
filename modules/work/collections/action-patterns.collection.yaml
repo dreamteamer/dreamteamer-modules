@@ -1,0 +1,99 @@
+name: action-patterns
+description: A portable high-level operational playbook for reasoning, decisions
+  and authorized action applicable to a goal class and project state; not a
+  concrete execution or goal assignment.
+use_when: After selecting a goal, match its goal class and present state to an
+  applicable playbook; reassess after feedback.
+sensitive: true
+storage:
+  path: data/action-patterns
+  format: md
+  suffix: action-pattern
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: Concrete name identifying the outcome or reusable pattern.
+  description:
+    type: string
+    required: true
+    description: Specific intent and boundaries; not merely a label.
+  tags:
+    type: string
+    many: true
+    description: Open vocabulary; no enum. Classification labels are not authorization.
+  evidence_status:
+    type: string
+    default: candidate
+    description: Open vocabulary, e.g. candidate, corroborated, verified. Verified
+      requires explicit evidence of validation, not just a transcript mention.
+  sources:
+    type: markdown
+    description: Portable, appropriately shareable references only. Keep private
+      source identities, case evidence and execution history in the authorized
+      local evidence destination, outside active strategy definitions.
+  validation:
+    type: markdown
+    description: Generic validation limits and conditions for using the method; not
+      private case findings or an unsupported effectiveness claim.
+  content:
+    type: markdown
+    body: true
+    description: Detailed interpretation, proposed steps, scope and constraints
+      distinct from evidence.
+  conversation_patterns:
+    title: Conversational Strategies
+    type: conversation-patterns
+    many: true
+    description: Conversational strategies this operational strategy may invoke.
+  prerequisites:
+    type: markdown
+    description: Required evidence, scope and authority before acting.
+  permission_boundary:
+    type: markdown
+    description: Authorized internal steps versus human-owned/external actions; not
+      standing approval.
+  status:
+    type: string
+    default: active
+    description: "Lifecycle status: active or archived. Separate from evidence
+      status; archived records remain resolvable."
+  use_when:
+    type: markdown
+    description: When this outcome or reusable strategy should guide the current session.
+  reclassification:
+    type: markdown
+    description: Why a prior draft was archived or reclassified; original evidence
+      remains available.
+  goal_classes:
+    type: string
+    many: true
+    description: Open shared labels for goal category and operational-strategy
+      applicability; not conversation purpose.
+  parent_strategy:
+    type: action-patterns
+    title: Parent Strategy
+    description: Optional same-type parent. No inherited authority. Self-parent and cycles
+      are not engine-enforced; review the hierarchy before saving changes.
+  children:
+    type: action-patterns
+    title: Sub Strategies
+    many: true
+    mirror_of: parent_strategy
+    description: Read-only built-in association generated from Parent on each child.
+      Change Parent on the child; never maintain this list manually.
+display:
+  nav:
+    icon: zap
+  list:
+    columns:
+      - name
+      - parent_strategy
+      - goal_classes
+      - conversation_patterns
+      - status
+title: Operational Strategies
+singular: Operational Strategy

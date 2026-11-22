@@ -109,6 +109,8 @@ private records, client configuration or tokens.
 
 | module | capability | needs |
 |---|---|---|
+| [`@dreamteamer/work`](modules/work) | goals and strategies, with linked tasks, sessions, decisions and their saved views | engine >=0.53.0; install Projects, Tasks and Sessions for full composition |
+| [`@dreamteamer/workspaces`](modules/workspaces) | desired Work Areas and Workspaces, operator and team catalog, offline review | engine >=0.53.0; no provisioning |
 | [`@dreamteamer/knowledge`](modules/knowledge) | raw thought capture, reader-facing briefs and cross-domain synthesis | companies · meetings; engine >=0.49.0 |
 | [`@dreamteamer/connectors-google-workspace`](modules/connectors-google-workspace) | explicit-account local bridge to a pinned public MCP server, read-only by default; the Google Calendar sync into meetings (`/fetch-meetings`, `WORK_CALENDARS`) | meetings; owner-controlled OAuth setup and local Python runtime |
 | [`@dreamteamer/connectors-linkedin`](modules/connectors-linkedin) | the LinkedIn scraper: `/scrape-contact` and the two contacts views (needs a LinkedIn link, needs review) | contacts · companies · assets; Docker and a LinkedIn sign-in |

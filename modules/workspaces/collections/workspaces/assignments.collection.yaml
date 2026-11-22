@@ -1,0 +1,47 @@
+{
+  "name": "workspaces/assignments",
+  "description": "Desired assignments for workspace deployment configuration. Records do not grant permissions or prove applied state.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/assignments", "format": "md", "suffix": "assignment" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "organization":
+        { "type": "workspaces/organizations", "description": "Explicit assignment scope.", "required": true },
+      "workspace": { "type": "workspaces/workspaces", "description": "Assigned workspace.", "required": true },
+      "desired_access":
+        {
+          "type": "string",
+          "description": "Requested repository access ceiling for this workspace; providers must independently authorize it.",
+          "required": true,
+          "enum": ["read", "write"],
+        },
+      "state":
+        {
+          "type": "string",
+          "description": "Desired presence or removal. Absent is not deletion or verified revocation.",
+          "required": true,
+          "enum": ["present", "absent"],
+        },
+      "revision":
+        {
+          "type": "string",
+          "description": "Opaque desired-state version identifier; separate from immutable Git template pins.",
+          "required": true,
+        },
+      "operator":
+        {
+          "type": "workspaces/operators",
+          "description": "Workspace Operator granted an instance listing in desired state.",
+          "required": true,
+        },
+      "assigned_by":
+        {
+          "type": "workspaces/roles",
+          "description": "Declared same-organization AI Ops role reviewing this assignment; not an authenticated actor or audit event.",
+          "required": true,
+        },
+    },
+  "display": { "nav": { "icon": "link", "order": 5 } },
+}

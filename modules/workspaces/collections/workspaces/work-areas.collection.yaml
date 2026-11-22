@@ -1,0 +1,65 @@
+{
+  "name": "workspaces/work-areas",
+  "description": "Operator configuration instances and same-type templates; no workspace listing or credential data.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/work-areas", "format": "md", "suffix": "work-area" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "organization":
+        { "type": "workspaces/organizations", "description": "Organization owning this work area.", "required": true },
+      "is_template":
+        {
+          "type": "boolean",
+          "description": "True for a reusable template; false for an assignable instance.",
+          "required": true,
+        },
+      "template": { "type": "workspaces/work-areas", "description": "Optional same-type source template." },
+      "template_revision":
+        { "type": "string", "description": "Immutable full Git commit SHA of the same-type source template." },
+      "configuration_repository":
+        {
+          "type": "workspaces/repositories",
+          "description": "Same-organization dedicated configuration repository; required for an instance only.",
+        },
+      "configuration_revision":
+        { "type": "string", "description": "Immutable full Git commit SHA of instance configuration." },
+      "workspace_display":
+        {
+          "type": "string",
+          "description": "Presentation preference, not an access grant.",
+          "required": true,
+          "enum": ["list", "grid"],
+        },
+      "marketplace_policy":
+        {
+          "type": "string",
+          "description": "Declarative marketplace policy. None is enabled by this module.",
+          "required": true,
+          "enum": ["disabled", "allowlist"],
+        },
+      "marketplace_allowlist":
+        {
+          "type": "string",
+          "description": "Allowed marketplace item identifiers; no credentials or URIs.",
+          "many": true,
+        },
+      "configured":
+        {
+          "type": "boolean",
+          "description": "Whether this record has the verified configuration inputs required for access modeling. Not a deployment observation.",
+        },
+      "workspaces":
+        {
+          "type": "workspaces/workspaces",
+          "description": "Workspaces included in the Work Area layout; the link does not grant access.",
+          "many": true,
+        },
+    },
+  "display":
+    {
+      "nav": { "icon": "layers", "order": 1 },
+      "list": { "columns": ["name", "organization", "workspaces", "is_template"] },
+    },
+}

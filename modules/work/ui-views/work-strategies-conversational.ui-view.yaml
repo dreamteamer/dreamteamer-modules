@@ -1,0 +1,19 @@
+route: /work/strategies/conversational
+scope: collection
+collection: collections/strategies
+description: Filtered from the one Strategies catalog.
+filter:
+  category:
+    _eq: conversational
+display:
+  nav:
+    title: Conversational
+    icon: list-unordered
+  list:
+    layout: table
+    columns:
+      - name
+      - status
+      - parent_strategy
+      - children
+    sort: name

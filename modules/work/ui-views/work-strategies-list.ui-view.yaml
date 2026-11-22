@@ -1,0 +1,17 @@
+route: /work/strategies/catalog
+scope: collection
+collection: collections/strategies
+description: One catalog across operational, conversational and unblocking categories.
+display:
+  nav:
+    title: Catalog
+    icon: list-unordered
+  list:
+    layout: table
+    columns:
+      - name
+      - category
+      - status
+      - parent_strategy
+      - children
+    sort: name

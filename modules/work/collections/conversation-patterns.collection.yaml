@@ -1,0 +1,88 @@
+name: conversation-patterns
+description: A portable method for leading an interaction toward a
+  conversational purpose, independently or from an operational playbook; not a
+  particular meeting or customer case.
+use_when: When discovery, co-design, feedback or a demonstration requires human
+  interaction and validated outputs.
+sensitive: true
+storage:
+  path: data/conversation-patterns
+  format: md
+  suffix: conversation-pattern
+ids:
+  from: "{{ name | slug }}"
+  pattern: ^[a-z0-9][a-z0-9-]*$
+fields:
+  name:
+    type: string
+    required: true
+    description: Concrete name identifying the outcome or reusable pattern.
+  description:
+    type: string
+    required: true
+    description: Specific intent and boundaries; not merely a label.
+  tags:
+    type: string
+    many: true
+    description: Open vocabulary; no enum. Classification labels are not authorization.
+  evidence_status:
+    type: string
+    default: candidate
+    description: Open vocabulary, e.g. candidate, corroborated, verified. Verified
+      requires explicit evidence of validation, not just a transcript mention.
+  sources:
+    type: markdown
+    description: Portable, appropriately shareable references only. Keep private
+      source identities, case evidence and execution history in the authorized
+      local evidence destination, outside active strategy definitions.
+  validation:
+    type: markdown
+    description: Generic validation limits and conditions for using the method; not
+      private case findings or an unsupported effectiveness claim.
+  content:
+    type: markdown
+    body: true
+    description: Detailed interpretation, proposed steps, scope and constraints
+      distinct from evidence.
+  output_expectations:
+    type: markdown
+    description: Intended outputs; distinguish proposed artifacts from observed writes.
+  status:
+    type: string
+    default: active
+    description: "Lifecycle status: active or archived. Separate from evidence
+      status; archived records remain resolvable."
+  use_when:
+    type: markdown
+    description: When this outcome or reusable strategy should guide the current session.
+  reclassification:
+    type: markdown
+    description: Why a prior draft was archived or reclassified; original evidence
+      remains available.
+  conversation_types:
+    type: string
+    many: true
+    description: Open labels describing conversational purpose, separate from goal class.
+  parent_strategy:
+    type: conversation-patterns
+    title: Parent Strategy
+    description: Optional same-type parent. No inherited authority. Self-parent and cycles
+      are not engine-enforced; review the hierarchy before saving changes.
+  children:
+    type: conversation-patterns
+    title: Sub Strategies
+    many: true
+    mirror_of: parent_strategy
+    description: Read-only built-in association generated from Parent on each child.
+      Change Parent on the child; never maintain this list manually.
+display:
+  nav:
+    icon: comment-discussion
+  list:
+    columns:
+      - name
+      - parent_strategy
+      - conversation_types
+      - status
+title: Conversational Strategies
+singular: Conversational Strategy

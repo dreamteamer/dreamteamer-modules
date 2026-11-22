@@ -1,0 +1,25 @@
+{
+  "name": "workspaces/organizations",
+  "description": "Desired organizations for workspace deployment configuration. Records do not grant permissions or prove applied state.",
+  "use_when": "Review or prepare organization-scoped workspace configuration without invoking providers or changing local runtime.",
+  "storage": { "path": "data/workspaces/organizations", "format": "md", "suffix": "organization" },
+  "ids": { "from": "{{ name | slug }}", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+  "fields":
+    {
+      "name": { "type": "string", "description": "Human-readable label.", "required": true },
+      "provider": { "type": "workspaces/providers", "description": "Explicit provider context.", "required": true },
+      "provider_namespace":
+        {
+          "type": "string",
+          "description": "Provider organization or Bitbucket workspace slug, not a credential.",
+          "required": true,
+        },
+      "management_repository":
+        {
+          "type": "workspaces/repositories",
+          "description": "The same-organization configuration repository containing the self-contained AI Ops roster and desired state.",
+          "required": true,
+        },
+    },
+  "display": { "nav": { "icon": "organization", "order": 4 } },
+}
