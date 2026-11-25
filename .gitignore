@@ -17,3 +17,5 @@ __pycache__/
 .vscode/
 # every module's build (scripts/build.ts), never sources
 modules/*/dist/
+# the generated tsconfig scripts/build.ts writes for one tsc run and removes after it
+.tsconfig.build.*.json
