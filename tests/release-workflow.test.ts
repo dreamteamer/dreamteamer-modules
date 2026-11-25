@@ -161,6 +161,65 @@ test("the gate scans the whole tree, honours .leak-scan-allow, and never prints 
   assert.doesNotMatch(leakGate.run, /grep -[a-zA-Z]*n[a-zA-Z]* "\$LEAK_NAMES"/, "never print matching lines")
 })
 
+// ── the tag's own name and annotation (rk-01, 2026-11-25) ───────────────────────────────────────
+// The tree gate reads files; a tag also publishes its NAME and, when annotated, a message. Run the step's own
+// script against a throwaway repository with a synthetic pattern, as the runner would.
+const tagGate = steps.find(s => /tag gate/.test(s.name ?? ""))
+
+test("a tag gate exists, reads the secret, and precedes every step that publishes", () => {
+  assert.ok(tagGate, "no tag-gate step — a tag's name and annotation reach the public log unscanned")
+  assert.match(JSON.stringify(tagGate.env ?? {}), /secrets\.LEAK_NAMES/)
+  for (const p of steps.filter(s => /npm publish/.test(s.run ?? "")))
+    assert.ok(steps.indexOf(tagGate) < steps.indexOf(p), `the tag gate must precede "${p.name}"`)
+})
+
+test("the tag gate refuses a private name in the tag's name or annotation, Hebrew in it, and an unset or malformed secret", async () => {
+  const { spawnSync, execFileSync } = await import("node:child_process")
+  const os = await import("node:os")
+  const env = {
+    ...process.env,
+    GIT_AUTHOR_NAME: "Dana Oren",
+    GIT_AUTHOR_EMAIL: "dana@northwind.example",
+    GIT_COMMITTER_NAME: "Dana Oren",
+    GIT_COMMITTER_EMAIL: "dana@northwind.example",
+  }
+  const origin = fs.mkdtempSync(path.join(os.tmpdir(), "tag-origin-"))
+  const git = (dir, ...a) =>
+    execFileSync("git", ["-C", dir, "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", ...a], {
+      env,
+      encoding: "utf8",
+    })
+  git(origin, "init", "-q", "-b", "main")
+  git(origin, "commit", "-q", "--allow-empty", "-m", "init")
+  git(origin, "tag", "-a", "work-v1.0.0", "-m", "an ordinary release")
+  git(origin, "tag", "-a", "work-v1.0.1", "-m", "a release for Globex")
+  git(origin, "tag", "globex-v1.0.2")
+  git(origin, "tag", "-a", "work-v1.0.3", "-m", "\u05e9\u05dc\u05d5\u05dd") // Hebrew, escaped so this file carries none
+  const run = (tag, names: string | null = "acme-corp|globex") => {
+    const clone = fs.mkdtempSync(path.join(os.tmpdir(), "tag-clone-"))
+    execFileSync("git", ["clone", "-q", "--no-tags", origin, clone], { env })
+    const e: Record<string, string> = {
+      ...(env as Record<string, string>),
+      TAG: tag,
+      RUNNER_TEMP: fs.mkdtempSync(path.join(os.tmpdir(), "runner-")),
+    }
+    if (names === null) delete e.LEAK_NAMES
+    else e.LEAK_NAMES = names
+    const r = spawnSync("bash", ["-c", tagGate.run], { cwd: clone, env: e, encoding: "utf8" })
+    return { code: r.status, out: `${r.stdout}${r.stderr}` }
+  }
+  const clean = run("work-v1.0.0")
+  assert.equal(clean.code, 0, clean.out)
+  assert.equal(run("work-v1.0.1").code, 1, "a private name in the annotation")
+  assert.equal(run("globex-v1.0.2").code, 1, "a private name in the tag's name")
+  assert.equal(run("work-v1.0.3").code, 1, "Hebrew in the annotation")
+  assert.equal(run("work-v1.0.0", null).code, 1, "an unset secret fails closed")
+  const malformed = run("work-v1.0.0", "\\b(unbalanced")
+  assert.equal(malformed.code, 1)
+  assert.match(malformed.out, /not a valid extended regex/)
+  assert.doesNotMatch(run("work-v1.0.1").out, /Globex/, "nothing matched is printed")
+})
+
 test("the checkout is deep enough for the ancestry gate to answer", () => {
   assert.equal(steps[0].with?.["fetch-depth"], 0, "a shallow tip cannot be tested for ancestry of main")
 })
