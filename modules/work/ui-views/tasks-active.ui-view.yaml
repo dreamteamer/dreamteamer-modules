@@ -1,10 +1,11 @@
 route: /work/tasks/active
 scope: collection
 collection: collections/tasks
-description: To Do, Doing, or Blocked only. This is a filtered view of the native Tasks table, not another work register.
+description: Queued, To Do, Doing or Blocked, grouped by project. This is a filtered view of the native Tasks table, not another work register.
 filter:
   status:
     _in:
+      - queued
       - todo
       - doing
       - blocked
@@ -12,17 +13,24 @@ display:
   nav:
     title: Active
     icon: play
-    order: -1
+    order: 120
   list:
     layout: table
     columns:
+      - last_modified
+      - task_code
       - name
       - status
+      - goals
+      - parent_task
+      - latest_update
+      - assistant_recommended_next_step
       - assignee
       - item
       - sessions
-      - last_modified
     sort: -last_modified
     options:
       page_size: 100
-      show_empty_rows: false
+      show_ungrouped_rows: true
+      show_empty_rows: true
+      group_by: project

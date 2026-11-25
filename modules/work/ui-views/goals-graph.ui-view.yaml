@@ -1,7 +1,10 @@
 route: /work/goals/graph
 scope: collection
 collection: collections/goals
-description: All Goals including archived Goals, using stored Parent Goal links. Status appears in labels. Diagram renderer capabilities depend on the client version.
+description: Goals that are not archived, in the saved hierarchy. Lines mean Parent Goal, not dependencies. Status in labels is the stored Goal status; no status colors are asserted. Diagram renderer capabilities depend on the client version.
+filter:
+  status:
+    _neq: archived
 display:
   nav:
     title: Graph
@@ -12,10 +15,17 @@ display:
       - name
       - parent_goal
       - status
+    sort: -created
     options:
       link_by: references
       ref_fields:
         - parent_goal
       node: dot
-      label_template: "{{ name }} · {{ status }}"
-      page_size: 1000
+      label_template: |-
+        {{ name }} · {{ status }}
+
+        Sessions: {{ sessions }}
+
+        Tasks: {{ tasks }}
+      page_size: 100000
+      goal_direction: left-right

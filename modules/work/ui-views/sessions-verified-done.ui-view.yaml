@@ -1,0 +1,28 @@
+route: /work/sessions/verified-done
+scope: collection
+collection: collections/sessions
+description: Sessions whose work is done with evidence. Ended does not mean done.
+filter:
+  work_status:
+    _eq: verified_done
+display:
+  nav:
+    title: Verified done
+    icon: check
+    order: 5
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - session_id
+      - work_status
+      - needs_operator
+      - next_step_owner
+      - suggested_next_step
+      - blocker_reason
+      - harness
+      - recap_saved_at
+      - tasks
+      - goals
+    sort: -started

@@ -6,13 +6,20 @@ display:
   nav:
     title: All Tasks
     icon: list-unordered
-    order: 70
+    order: 0
   list:
     layout: table
     columns:
+      - last_modified
+      - task_code
       - name
       - status
       - assignee
+      - latest_update
+      - goals
+      - sessions
       - item
-      - last_modified
     sort: -last_modified
+    options:
+      show_ungrouped_rows: true
+      show_empty_rows: false

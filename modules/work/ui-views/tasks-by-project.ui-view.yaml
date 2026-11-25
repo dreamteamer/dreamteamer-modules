@@ -1,0 +1,35 @@
+route: /tasks/by-project
+scope: collection
+collection: collections/tasks
+title: By project
+description: Open tasks (suggested, queued, to do, doing, blocked) grouped by their project; the ungrouped band holds the open tasks with no project.
+filter:
+  status:
+    _in:
+      - suggested
+      - queued
+      - todo
+      - doing
+      - blocked
+display:
+  nav:
+    title: By project
+    icon: rocket
+    order: 90
+  list:
+    layout: table
+    columns:
+      - last_modified
+      - task_code
+      - name
+      - status
+      - latest_update
+      - assignee
+      - project
+      - goals
+      - sessions
+    sort: -last_modified
+    options:
+      group_by: project
+      show_ungrouped_rows: true
+      show_empty_rows: false

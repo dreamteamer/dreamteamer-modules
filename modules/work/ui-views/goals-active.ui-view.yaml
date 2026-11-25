@@ -14,6 +14,7 @@ display:
       - target_date
       - goal_classes
       - children
+      - tasks
       - status
     options:
       group_by: parent_goal

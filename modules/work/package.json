@@ -1,7 +1,7 @@
 {
   "name": "@dreamteamer/work",
-  "version": "0.2.0",
-  "description": "Goals, strategies and optional task, session, and decision associations.",
+  "version": "0.3.0",
+  "description": "Goals, strategies, the Work views a team runs every day, and a goals interview that turns clients into a goal tree.",
   "license": "Apache-2.0",
   "type": "module",
   "repository": {
@@ -19,12 +19,14 @@
     "UPDATING.md",
     "nav.yaml",
     "collections",
+    "commands",
+    "skills",
     "ui-views",
     "mixins"
   ],
   "dreamteamer": {
     "title": "Work",
-    "description": "Reusable goals, strategies and shared Work views with typed task, session and decision associations. No data or execution authority.",
+    "description": "Goals and reusable strategies, with typed task, session and decision links and a ready Work setup: Goals 3D, Gantt and Graph, Tasks by status, goal, parent and project, Sessions by status, open decisions, and /work:goals-interview, which turns clients into a goal tree. No data or execution authority.",
     "engine": ">=0.53.0",
     "nav": "nav.yaml",
     "peer_collections": [

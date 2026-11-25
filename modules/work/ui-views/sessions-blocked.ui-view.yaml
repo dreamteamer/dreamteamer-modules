@@ -1,0 +1,28 @@
+route: /work/sessions/blocked
+scope: collection
+collection: collections/sessions
+description: Sessions whose work is blocked, with the observed reason and who takes the next step.
+filter:
+  work_status:
+    _eq: blocked
+display:
+  nav:
+    title: Blocked
+    icon: circle-slash
+    order: 2
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - session_id
+      - work_status
+      - needs_operator
+      - next_step_owner
+      - suggested_next_step
+      - blocker_reason
+      - harness
+      - recap_saved_at
+      - tasks
+      - goals
+    sort: -started

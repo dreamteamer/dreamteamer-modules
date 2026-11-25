@@ -1,0 +1,27 @@
+route: /work/decisions/open
+scope: collection
+collection: collections/decisions
+description: Open decisions — questions waiting for a call, banded by severity.
+filter:
+  status:
+    _eq: open
+display:
+  nav:
+    title: Open decisions
+    icon: question
+    order: 1
+  list:
+    layout: table
+    columns:
+      - severity
+      - name
+      - question
+      - lean
+      - blocks
+      - question_kind
+      - raised_on
+      - source
+    sort: -raised_on
+    options:
+      group_by: severity
+      show_ungrouped_rows: true

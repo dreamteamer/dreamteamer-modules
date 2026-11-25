@@ -1,3 +1,6 @@
+# An open question is a decision not made yet: `status` says where the call stands. While a decision is open,
+# parked or dropped it carries the question and no decider; once decided it carries the decision, who made it and
+# when. A decision written before this overlay has no status, reads as `decided`, and keeps its id.
 name: decisions
 overlay: true
 fields:
@@ -17,3 +20,152 @@ fields:
     type: tasks
     many: true
     description: Tasks governed or unblocked by the decision. Author this relation here; the reciprocal list on Task is generated.
+  status:
+    type: string
+    title: Status
+    default: decided
+    enum:
+      - open
+      - parked
+      - decided
+      - dropped
+    description: >-
+      Where the call stands. `open` — a question waiting for its decision; `parked` — open, deliberately not being
+      worked; `decided` — the call is made (a record with the field absent is one); `dropped` — the question stopped
+      mattering, why in `rationale`. Supersession stays in `outcome` and `supersedes`.
+  raised_on:
+    type: datetime
+    title: Raised on
+    description: When the question was first asked. Optional; when empty, the record's created is the raised moment. Kept after deciding.
+  decided_on:
+    required: false
+    description: >-
+      The moment the call was made, with its local offset. Refused while open, parked or dropped; required once
+      decided. Never the moment a question was raised — that is raised_on.
+  decision:
+    required: false
+    description: What was chosen, stated plainly and in the active voice. Empty while `status` is open, parked or dropped; required otherwise.
+  decided_by:
+    required: false
+    description: >-
+      Who made the call. Empty while `status` is open, parked or dropped; required otherwise. `person` requires
+      `decider` or `external_decider`; `agent` requires `agent`; `unknown` is a decision read out of a source that does
+      not say.
+  question:
+    type: string
+    title: Question
+    description: The fork phrased so a person could answer it in one sitting. Required while open, parked or dropped.
+  options:
+    type: string
+    many: true
+    title: Options
+    description: The live options while open, one per item. On deciding, the chosen one becomes `decision` and the others move to `alternatives`, each with why it lost.
+  lean:
+    type: string
+    title: Lean
+    description: The current lean and its reason, marked as a lean rather than a finding.
+  how_to_settle:
+    type: string
+    title: How to settle
+    description: The cheapest concrete next action that would close it.
+  blocks:
+    type: string
+    many: true
+    title: Blocks
+    description: Records that cannot be honestly finished while this stays open, as `<collection>/<id>` strings.
+  severity:
+    type: string
+    title: Severity
+    enum:
+      - blocking
+      - high
+      - medium
+      - low
+    description: How much waits on it while open. `blocking` means work is stopped until it is decided. Optional, no default; Decisions › Open decisions groups by it.
+  question_kind:
+    type: string
+    title: Question kind
+    enum:
+      - needs-decision
+      - needs-primary-research
+      - needs-data
+      - unresolved-tension
+      - assumption-to-test
+      - risk
+    description: What kind of open question it is — the kinds `rnd/open-questions` uses, for a question carried over from there.
+constraints:
+  - if:
+      required: [status]
+      properties:
+        status:
+          enum: [open, parked]
+    then:
+      required: [question]
+      not:
+        anyOf:
+          - required: [decision]
+          - required: [decided_by]
+          - required: [decider]
+          - required: [external_decider]
+          - required: [agent]
+          - required: [decided_on]
+  - if:
+      required: [status]
+      properties:
+        status:
+          const: dropped
+    then:
+      required: [question, rationale]
+      not:
+        anyOf:
+          - required: [decision]
+          - required: [decided_by]
+          - required: [decider]
+          - required: [external_decider]
+          - required: [agent]
+          - required: [decided_on]
+  - if:
+      required: [status]
+      properties:
+        status:
+          enum: [open, parked, dropped]
+    then: {}
+    else:
+      required: [decision, decided_by, decided_on]
+  # a question raised in this model is decided by a person or an agent, never `unknown`; a record carried over from
+  # rnd/open-questions with that tag keeps whatever its source said
+  - if:
+      allOf:
+        - required: [raised_on, decided_by]
+        - not:
+            required: [tags]
+            properties:
+              tags:
+                contains:
+                  const: carried-from-open-questions
+    then:
+      properties:
+        decided_by:
+          enum: [person, agent]
+display:
+  list:
+    columns:
+      - name
+      - status
+      - decided_on
+      - decided_by
+      - goals
+      - project
+      - kind
+      - reversibility
+      - outcome
+    sort: -last_modified
+# an open decision has no decided_on yet, so its id falls back to when it was raised, then to when it was written
+ids:
+  from:
+    - "{{ decided_on | date }}--{{ slug }}"
+    - "{{ decided_on | date }}--{{ name | slug }}"
+    - "{{ raised_on | date }}--{{ slug }}"
+    - "{{ raised_on | date }}--{{ name | slug }}"
+    - "{{ created | date }}--{{ name | slug }}"
+  pattern: ^\d{4}-\d{2}-\d{2}--[a-z0-9-]+$

@@ -1,0 +1,28 @@
+# Overlay of the Tasks package's List: queued joins the open statuses, with the Task ID, log, goals and sessions.
+overlay: true
+filter:
+  status:
+    _in:
+      - suggested
+      - queued
+      - todo
+      - doing
+      - blocked
+display:
+  list:
+    columns:
+      - last_modified
+      - task_code
+      - name
+      - status
+      - latest_update
+      - assignee
+      - created
+      - due
+      - project
+      - tags
+      - goals
+      - sessions
+    sort: -last_modified
+  nav:
+    order: 100

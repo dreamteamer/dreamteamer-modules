@@ -1,0 +1,28 @@
+route: /work/sessions/active
+scope: collection
+collection: collections/sessions
+description: Sessions with work in flight.
+filter:
+  work_status:
+    _eq: active
+display:
+  nav:
+    title: Active
+    icon: play
+    order: 3
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - session_id
+      - work_status
+      - needs_operator
+      - next_step_owner
+      - suggested_next_step
+      - blocker_reason
+      - harness
+      - recap_saved_at
+      - tasks
+      - goals
+    sort: -started

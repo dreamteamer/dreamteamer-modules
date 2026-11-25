@@ -1,7 +1,7 @@
 route: /work/sessions/goals-graph
 scope: collection
 collection: collections/sessions
-description: Sessions with typed Goal and Task links. Unlinked Sessions remain visible.
+description: All Sessions, with their typed Goal and Task links; unlinked Sessions remain isolated. Goal nodes show stable slugs.
 display:
   nav:
     title: Sessions Graph

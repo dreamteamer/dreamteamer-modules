@@ -1,0 +1,27 @@
+route: /work/decisions/parked
+scope: collection
+collection: collections/decisions
+description: Parked decisions — open questions deliberately not being worked.
+filter:
+  status:
+    _eq: parked
+display:
+  nav:
+    title: Parked decisions
+    icon: question
+    order: 2
+  list:
+    layout: table
+    columns:
+      - severity
+      - name
+      - question
+      - lean
+      - blocks
+      - question_kind
+      - raised_on
+      - source
+    sort: -raised_on
+    options:
+      group_by: severity
+      show_ungrouped_rows: true

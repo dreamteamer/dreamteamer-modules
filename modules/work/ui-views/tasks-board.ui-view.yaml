@@ -1,0 +1,23 @@
+# Overlay of the Tasks package's Board: queued joins the open statuses, and a card shows goals and the latest update.
+overlay: true
+filter:
+  status:
+    _in:
+      - suggested
+      - queued
+      - todo
+      - doing
+      - blocked
+display:
+  list:
+    options:
+      card_title: |-
+        **{{ name }}**
+
+        Created: {{ created }} · Due: {{ due }}
+        {{ assignee }} · {{ project }}
+        {{ goals }}
+
+        {{ latest_update }}
+  nav:
+    order: 110

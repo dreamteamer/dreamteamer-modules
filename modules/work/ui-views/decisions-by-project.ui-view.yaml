@@ -1,0 +1,25 @@
+route: /work/decisions/by-project
+scope: collection
+collection: collections/decisions
+title: By project
+description: Decisions grouped by the project they were made on; the ungrouped band holds the decisions with no project.
+display:
+  nav:
+    title: By project
+    icon: rocket
+  list:
+    layout: table
+    columns:
+      - decided_on
+      - name
+      - status
+      - decided_by
+      - project
+      - kind
+      - tasks
+      - goals
+    sort: -decided_on
+    options:
+      group_by: project
+      show_ungrouped_rows: true
+      show_empty_rows: false

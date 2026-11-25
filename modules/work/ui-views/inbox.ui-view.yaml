@@ -1,0 +1,17 @@
+# Overlay of the Tasks package's Inbox: no sidebar entry, its route stays.
+overlay: true
+display:
+  nav: null
+  list:
+    columns:
+      - last_modified
+      - name
+      - assignee
+      - created
+      - status
+      - latest_update
+      - assistant_recommended_next_step
+      - urgent
+      - due
+      - goals
+    sort: -last_modified

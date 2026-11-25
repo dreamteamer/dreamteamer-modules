@@ -10,6 +10,7 @@ display:
       - last_modified
       - created
       - name
+      - session_id
       - work_status
       - blocker_reason
       - harness

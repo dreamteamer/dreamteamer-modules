@@ -13,10 +13,15 @@ display:
     layout: table
     columns:
       - last_modified
+      - task_code
       - name
       - status
+      - latest_update
+      - assistant_recommended_next_step
       - assignee
       - item
+      - goals
+      - sessions
     sort: -last_modified
     options:
       show_ungrouped_rows: true

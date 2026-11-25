@@ -1,0 +1,17 @@
+# Overlay of the Tasks package's Mine view.
+overlay: true
+display:
+  list:
+    columns:
+      - last_modified
+      - name
+      - status
+      - latest_update
+      - start
+      - due
+      - depends_on
+      - product
+      - change_requests
+      - goals
+      - sessions
+    sort: -last_modified

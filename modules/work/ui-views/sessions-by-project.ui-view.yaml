@@ -1,0 +1,26 @@
+route: /work/sessions/by-project
+scope: collection
+collection: collections/sessions
+title: By project
+description: Sessions grouped by their project; the ungrouped band holds the sessions with no project.
+display:
+  nav:
+    title: By project
+    icon: rocket
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - session_id
+      - work_status
+      - project
+      - needs_operator
+      - suggested_next_step
+      - tasks
+      - goals
+    sort: -started
+    options:
+      group_by: project
+      show_ungrouped_rows: true
+      show_empty_rows: false

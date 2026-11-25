@@ -1,0 +1,29 @@
+route: /tasks/queued
+scope: collection
+collection: collections/tasks
+title: Queued
+description: Asks accepted and captured as tasks, waiting their turn, with who asked and the sessions the ask came from.
+filter:
+  status:
+    _eq: queued
+display:
+  nav:
+    title: Queued
+    icon: inbox
+    order: 15
+  list:
+    layout: table
+    columns:
+      - last_modified
+      - task_code
+      - name
+      - asked_by
+      - raw_input
+      - parent_task
+      - ask_sessions
+      - latest_update
+      - goals
+      - created
+    sort: -last_modified
+    options:
+      show_empty_rows: false

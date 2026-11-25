@@ -1,0 +1,28 @@
+route: /work/sessions/no-status
+scope: collection
+collection: collections/sessions
+description: Sessions with no evidence-backed status yet, including historic records.
+filter:
+  work_status:
+    _empty: true
+display:
+  nav:
+    title: No status
+    icon: question
+    order: 6
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - session_id
+      - work_status
+      - needs_operator
+      - next_step_owner
+      - suggested_next_step
+      - blocker_reason
+      - harness
+      - recap_saved_at
+      - tasks
+      - goals
+    sort: -started

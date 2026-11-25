@@ -1,0 +1,29 @@
+route: /work/goals/by-project
+scope: collection
+collection: collections/goals
+title: By project
+description: Active and suggested goals grouped by the project they serve; the ungrouped band holds the goals that cut across projects or name none.
+filter:
+  status:
+    _in:
+      - active
+      - suggested
+display:
+  nav:
+    title: By project
+    icon: rocket
+  list:
+    layout: table
+    columns:
+      - created
+      - name
+      - status
+      - project
+      - parent_goal
+      - tasks
+      - sessions
+    sort: -created
+    options:
+      group_by: project
+      show_ungrouped_rows: true
+      show_empty_rows: false

@@ -1,0 +1,28 @@
+route: /work/sessions/by-goal
+scope: collection
+collection: collections/sessions
+title: By goal
+description: Sessions grouped by the goal they serve; the ungrouped band holds the sessions that name none.
+display:
+  nav:
+    title: By goal
+    icon: target
+    order: 0
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - harness
+      - session_id
+      - work_status
+      - tasks
+      - description
+      - suggested_next_step
+      - source
+      - recap_saved_at
+    sort: -started
+    options:
+      group_by: goals
+      show_ungrouped_rows: true
+      show_empty_rows: false

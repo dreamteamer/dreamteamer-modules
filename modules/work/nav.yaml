@@ -2,8 +2,10 @@ tree:
   - folder: Work
     icon: briefcase
     items:
+      - goals
       - tasks
       - sessions
-      - goals
-      - strategies
       - decisions
+      - folder: Brain
+        items:
+          - strategies

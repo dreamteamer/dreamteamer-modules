@@ -76,6 +76,12 @@ fields:
   source_category:
     type: string
     title: Original Category
+    description: Preserved import provenance; Category is the current classification.
+    display:
+      hidden:
+        - list
+        - form
+        - record
     enum:
       - operational
       - conversational
@@ -108,13 +114,14 @@ display:
   list:
     layout: table
     columns:
+      - created
       - name
       - category
-      - source_category
       - parent_strategy
       - children
       - status
       - source_record
+      - last_modified
     options:
       group_by: category
-    sort: name
+    sort: -created

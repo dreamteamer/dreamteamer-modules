@@ -12,15 +12,17 @@ display:
   list:
     layout: table
     columns:
-      - created
+      - last_modified
+      - task_code
+      - latest_update_at
       - name
       - status
+      - goals
+      - sessions
+      - latest_update
+      - assistant_recommended_next_step
       - assignee
-      - due
-      - project
-      - tags
-      - last_modified
-    sort: -created
+    sort: -last_modified
     options:
       show_ungrouped_rows: true
       show_empty_rows: false

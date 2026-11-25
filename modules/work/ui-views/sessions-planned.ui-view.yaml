@@ -1,0 +1,28 @@
+route: /work/sessions/planned
+scope: collection
+collection: collections/sessions
+description: Sessions registered with work planned and not started.
+filter:
+  work_status:
+    _eq: planned
+display:
+  nav:
+    title: Planned
+    icon: clock
+    order: 4
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - session_id
+      - work_status
+      - needs_operator
+      - next_step_owner
+      - suggested_next_step
+      - blocker_reason
+      - harness
+      - recap_saved_at
+      - tasks
+      - goals
+    sort: -started

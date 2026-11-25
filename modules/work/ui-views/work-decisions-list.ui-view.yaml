@@ -1,7 +1,7 @@
 route: /work/decisions
 scope: collection
 collection: collections/decisions
-description: Read Decisions and their typed Work associations. This is the existing Decisions collection.
+description: The decision log, newest first — each decision with its status, who decided, its project, and the tasks, goals, Sessions and records it names.
 display:
   nav:
     title: Decision Log
@@ -11,10 +11,11 @@ display:
     columns:
       - decided_on
       - name
+      - status
       - decided_by
-      - outcome
+      - project
+      - tasks
       - goals
       - sessions
-      - strategies
-      - tasks
+      - affects
     sort: -decided_on

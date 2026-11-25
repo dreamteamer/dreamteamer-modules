@@ -1,0 +1,17 @@
+# Overlay of the Tasks package's By assignee view.
+overlay: true
+display:
+  list:
+    options:
+      group_by: null
+    columns:
+      - last_modified
+      - name
+      - status
+      - latest_update
+      - urgent
+      - due
+      - tags
+      - goals
+      - sessions
+    sort: -last_modified

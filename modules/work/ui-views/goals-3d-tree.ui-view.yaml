@@ -1,0 +1,23 @@
+route: /work/goals/3d
+scope: collection
+collection: collections/goals
+description: The goal tree in 3D, drawn by the desktop app's generic `tree3d` layout. Edges are actual Parent Goal links; every goal whose parent is not on the page is a root. A click opens the goal beside the tree and moves the camera to it. Each goal's sessions are drawn as small balls on the side opposite its subgoals, coloured by their status. A client without the layout draws its default list.
+filter:
+  status:
+    _neq: archived
+display:
+  nav:
+    title: 3D
+    icon: type-hierarchy
+  list:
+    layout: tree3d
+    columns:
+      - name
+      - parent_goal
+      - status
+    sort: name
+    options:
+      parent_by: parent_goal
+      labels: auto
+      satellites: sessions
+      page_size: 100000

@@ -1,0 +1,28 @@
+route: /work/sessions/needs-operator
+scope: collection
+collection: collections/sessions
+description: Sessions that cannot go on until a person acts, each with its suggested next step.
+filter:
+  needs_operator:
+    _eq: true
+display:
+  nav:
+    title: Needs a person
+    icon: bell
+    order: 1
+  list:
+    layout: table
+    columns:
+      - started
+      - name
+      - session_id
+      - work_status
+      - needs_operator
+      - next_step_owner
+      - suggested_next_step
+      - blocker_reason
+      - harness
+      - recap_saved_at
+      - tasks
+      - goals
+    sort: -started

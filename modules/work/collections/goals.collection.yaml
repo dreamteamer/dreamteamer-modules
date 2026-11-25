@@ -73,6 +73,22 @@ fields:
     many: true
     mirror_of: goals
     description: Derived read-only Sessions associated with this Goal.
+  tasks:
+    type: tasks
+    many: true
+    mirror_of: goals
+    title: Tasks
+    description: Read-only, generated from Goals on each task. Link a task to this goal on the task; never maintain this list by hand.
+  decisions:
+    type: decisions
+    many: true
+    mirror_of: goals
+    title: Decisions
+    description: Read-only, generated from Goals on each decision. Link a decision to this goal on the decision; never maintain this list by hand.
+  project:
+    type: projects
+    title: Project
+    description: The project this goal serves, when it serves one. Empty on a goal that cuts across projects. No list is stored on the project; read it with `dt list goals --filter project=projects/<id>` or Goals › By project.
   roadmap_start:
     type: date
     title: Proposed Roadmap Start
@@ -87,12 +103,15 @@ display:
   list:
     columns:
       - created
+      - last_modified
       - name
       - status
+      - project
       - target_date
+      - sessions
+      - tasks
       - children
       - goal_classes
-    sort: -created
+    sort: -last_modified
     options:
-      group_by: parent_goal
       show_ungrouped_rows: true

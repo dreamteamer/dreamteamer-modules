@@ -1,0 +1,38 @@
+route: /tasks/by-parent
+scope: collection
+collection: collections/tasks
+title: By parent
+description: Subtasks grouped under their parent task, open and done; a task with no parent is not listed here.
+filter:
+  status:
+    _in:
+      - suggested
+      - queued
+      - todo
+      - doing
+      - blocked
+      - done
+  parent_task:
+    _nnull: true
+display:
+  nav:
+    title: By parent
+    icon: type-hierarchy-sub
+    order: 80
+  list:
+    layout: table
+    columns:
+      - last_modified
+      - task_code
+      - name
+      - status
+      - parent_task
+      - latest_update
+      - asked_by
+      - goals
+      - sessions
+    sort: -last_modified
+    options:
+      group_by: parent_task
+      show_ungrouped_rows: false
+      show_empty_rows: false

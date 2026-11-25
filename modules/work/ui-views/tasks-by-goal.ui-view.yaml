@@ -1,0 +1,35 @@
+route: /tasks/by-goal
+scope: collection
+collection: collections/tasks
+title: By goal
+description: Open tasks (suggested, queued, to do, doing, blocked) grouped by the goals they serve; the ungrouped band holds tasks with no goal.
+filter:
+  status:
+    _in:
+      - suggested
+      - queued
+      - todo
+      - doing
+      - blocked
+display:
+  nav:
+    title: By goal
+    icon: target
+    order: 70
+  list:
+    layout: table
+    columns:
+      - last_modified
+      - task_code
+      - name
+      - status
+      - latest_update
+      - assignee
+      - goals
+      - parent_task
+      - sessions
+    sort: -last_modified
+    options:
+      group_by: goals
+      show_ungrouped_rows: true
+      show_empty_rows: false

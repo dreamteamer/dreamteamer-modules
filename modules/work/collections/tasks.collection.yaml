@@ -11,3 +11,68 @@ fields:
     many: true
     mirror_of: tasks
     description: Recap-only Sessions that name this Task; write the link on the Session.
+  task_code:
+    type: string
+    title: Task ID
+    pattern: ^TASK-[0-9]{3,}$
+    unique: true
+    description: Stable human-readable task identifier, `TASK-` and three or more digits; assign once, never renumber, and never replace the record id or its links.
+  latest_update:
+    type: string
+    title: Log
+    maxLength: 320
+    description: The most recent meaningful event, one line. Write it together with the matching line of the Status log in the body.
+  latest_update_at:
+    type: datetime
+    title: Updated At
+    description: When Latest Update was written, in UTC; independent of file commit history.
+  goals:
+    type: goals
+    many: true
+    title: Goals
+    description: The goals this task serves. Write the link here; each goal lists its tasks back, generated. `item` still says where the task came from.
+  # The Tasks package's status list restated whole with `queued` added: an overlay refines a field key by key, so
+  # `enum` replaces the list. List order is the order of the Board's columns.
+  status:
+    enum:
+      - suggested
+      - queued
+      - todo
+      - doing
+      - blocked
+      - done
+      - closed
+    description: suggested is a candidate nobody has asked for yet, awaiting triage; queued is an ask a person or an agent made and an agent accepted, captured with the asker's words and waiting its turn; todo is planned and ready to pick up, doing is in flight, blocked awaits a dependency, done delivered, closed left without delivery.
+  raw_input:
+    type: markdown
+    title: Ask (verbatim)
+    description: The asker's own words, exactly as given, written once when the ask is captured. Never a paraphrase or a reconstruction; interpretation goes in the description, follow-ups under `## Asks` in the body.
+  asked_by:
+    type: users
+    title: Asked by
+    description: The person who asked for this. An agent that asked is named by its Session in Ask sessions.
+  ask_sessions:
+    type: sessions
+    many: true
+    title: Ask sessions
+    description: The sessions the ask was made or updated in. Kept on the task with no mirror, so capturing an ask never rewrites a Session another agent has open; the generated Sessions column still lists the sessions that worked on it.
+  parent_task:
+    type: tasks
+    title: Parent task
+    description: The task this one is a subtask of. No subtasks list is stored on the parent, so a subtask's commit never carries the parent's other pending edits; read the subtasks of a task in Tasks › By parent, or with `dt list tasks --filter parent_task=tasks/<id>`. Nothing is inherited — goals, status or authority.
+display:
+  list:
+    columns:
+      - last_modified
+      - name
+      - status
+      - latest_update
+      - assignee
+      - due
+      - project
+      - tags
+      - goals
+    sort: -last_modified
+    options:
+      show_ungrouped_rows: true
+      show_empty_rows: false

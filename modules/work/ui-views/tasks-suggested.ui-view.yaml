@@ -1,0 +1,25 @@
+# Overlay of the Tasks package's Suggested view.
+overlay: true
+display:
+  list:
+    columns:
+      - last_modified
+      - name
+      - status
+      - latest_update
+      - assignee
+      - due
+      - project
+      - item
+      - tags
+      - creation_context
+      - goals
+      - sessions
+    sort: -last_modified
+    options:
+      show_ungrouped_rows: true
+      show_empty_rows: false
+  nav:
+    title: Suggested
+    icon: list-unordered
+    order: 10

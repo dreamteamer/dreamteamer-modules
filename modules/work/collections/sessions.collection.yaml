@@ -29,3 +29,41 @@ fields:
     description: Goals directly associated with this Session.
   description:
     title: Recap
+  needs_operator:
+    type: boolean
+    title: Needs a person
+    description: True while this Session cannot go on until the person it works for acts (an answer, an approval, a login, a trust prompt). Set it with `suggested_next_step`; clear it as soon as they have acted.
+  suggested_next_step:
+    type: string
+    title: Suggested next step
+    maxLength: 320
+    description: The one concrete next action, written so whoever owns it can take it without opening the Session. For a person, say exactly what to click, decide or grant.
+  next_step_owner:
+    type: string
+    title: Next step owner
+    enum:
+      # the stored value keeps its name; the label is what a list shows
+      operator:
+        label: Person
+      agent:
+        label: Agent
+      external:
+        label: External
+    description: Who takes the suggested next step — the person this workspace works for, an agent that can proceed alone, or someone or something outside this workspace.
+  recap_saved_at:
+    type: datetime
+    title: Recap saved
+    description: Last explicit recap update; not session start or close.
+display:
+  list:
+    columns:
+      - started
+      - name
+      - session_id
+      - description
+      - goals
+      - turns
+      - harness
+    sort: -started
+    options:
+      show_ungrouped_rows: true

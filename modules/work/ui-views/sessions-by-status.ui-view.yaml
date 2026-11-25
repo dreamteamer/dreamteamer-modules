@@ -1,0 +1,37 @@
+route: /work/sessions/by-status
+scope: collection
+collection: collections/sessions
+description: Sessions with a status as a board, one lane per status. Sessions with no status are in No status.
+filter:
+  work_status:
+    _nnull: true
+display:
+  nav:
+    title: By status
+    icon: project
+    order: 0
+  list:
+    layout: kanban
+    columns:
+      - name
+      - session_id
+      - work_status
+      - needs_operator
+      - next_step_owner
+      - suggested_next_step
+      - harness
+    sort: -started
+    options:
+      lanes_by: work_status
+      show_empty_columns: true
+      page_size: 100000
+      card_title: |-
+        **{{ name }}**
+
+        {{ session_id }}
+
+        {{ harness }} · needs a person: {{ needs_operator }} · next: {{ next_step_owner }}
+
+        {{ suggested_next_step }}
+
+        {{ blocker_reason }}

@@ -11,3 +11,14 @@ display:
     order: 20
   list:
     layout: table
+    columns:
+      - last_modified
+      - name
+      - status
+      - latest_update
+      - assignee
+      - due
+      - project
+      - tags
+      - goals
+    sort: -last_modified

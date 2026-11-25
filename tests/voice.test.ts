@@ -80,6 +80,16 @@ for (const m of moduleIds()) {
                   text.trim() ===
                     '"storage": { "path": "data/workspaces/operators", "format": "md", "suffix": "operator" },') ||
                   (f.endsWith("/assignments.collection.yaml") && /^\s*"?operator"?\s*:\s*$/.test(text)))
+              ) &&
+              // Work's sessions.next_step_owner keeps the stored value its records already carry (its label reads
+              // "Person"), and the Needs a person view keeps the id and route its users already open. Only that
+              // enum key and that route are excused.
+              !(
+                m === "work" &&
+                name === "the workspace it came from" &&
+                ((f.endsWith("/work/collections/sessions.collection.yaml") && /^\s*operator:\s*$/.test(text)) ||
+                  (f.endsWith("/work/ui-views/sessions-needs-operator.ui-view.yaml") &&
+                    text.trim() === "route: /work/sessions/needs-operator"))
               )
             )
               hits.push(`${path.relative(MODULES, f)}:${n}  ${text.trim().slice(0, 100)}`)

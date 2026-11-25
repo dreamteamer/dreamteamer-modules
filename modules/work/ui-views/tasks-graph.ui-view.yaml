@@ -1,14 +1,20 @@
 route: /work/tasks/graph
 scope: collection
 collection: collections/tasks
-description: Tasks are linked by their Item and prerequisite references. Unlinked Tasks remain visible.
+description: Tasks in Doing or Blocked. Edges are real Task Item or prerequisite references; incoming Session links are not drawn by this renderer.
+filter:
+  status:
+    _in:
+      - doing
+      - blocked
 display:
   nav:
     title: Graph
     icon: type-hierarchy
-    order: 4
+    order: 130
   list:
     layout: diagram
+    sort: -last_modified
     columns:
       - name
       - status
@@ -22,4 +28,4 @@ display:
       node: dot
       hide_leaves: false
       label_template: "{{ name }} · {{ status }}"
-      page_size: 1000
+      page_size: 100000
