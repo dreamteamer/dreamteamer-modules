@@ -21,7 +21,7 @@ fields:
     type: string
     title: Log
     maxLength: 320
-    description: The most recent meaningful event, one line. Write it together with the matching line of the Status log in the body.
+    description: The most recent meaningful event, in one line. A longer history, when you keep one, goes in the body.
   latest_update_at:
     type: datetime
     title: Updated At
@@ -46,7 +46,7 @@ fields:
   raw_input:
     type: markdown
     title: Ask (verbatim)
-    description: The asker's own words, exactly as given, written once when the ask is captured. Never a paraphrase or a reconstruction; interpretation goes in the description, follow-ups under `## Asks` in the body.
+    description: The asker's own words, exactly as given, written once when the ask is captured. Never a paraphrase or a reconstruction; interpretation goes in the description, and a later message from the asker is added to the body with its date.
   asked_by:
     type: users
     title: Asked by

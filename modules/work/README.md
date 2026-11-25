@@ -35,18 +35,21 @@ tree:
       - decisions
       - folder: Brain
         items:
+          - agents
+          - skills
+          - commands
+          - routines
+          - risks
           - strategies
           - projects
-          - risks
           - teams
           - users
-          - agents
-  - folder: CRM
-    items:
-      - meetings
-      - engagements
-      - companies
-      - contacts
+      - folder: CRM
+        items:
+          - meetings
+          - engagements
+          - companies
+          - contacts
 hidden:
   - activities
   - action-patterns

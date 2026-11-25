@@ -451,6 +451,21 @@ describe("what the tarball ships", () => {
     assert.deepEqual(listed, added)
   })
 
+  test("the README's nav block reads as nav.yaml and names only official collections", () => {
+    const block = /```yaml\n([\s\S]*?)```/.exec(read("README.md"))[1]
+    const doc: any = yaml.load(block)
+    const rows = doc.tree.flatMap(function walk(e) {
+      return typeof e === "string" ? [e] : (e.items ?? []).flatMap(walk)
+    })
+    const system = new Set(["skills", "commands", "routines"])
+    assert.deepEqual(
+      [...rows, ...doc.hidden].filter(c => !KNOWN.has(c) && !system.has(c)),
+      []
+    )
+    assert.equal(new Set(rows).size, rows.length, "a row placed twice")
+    assert.deepEqual(rows.slice(0, 4), ["goals", "tasks", "sessions", "decisions"])
+  })
+
   test("the README's install line and notes name this version", () => {
     assert.equal(pkgOf("work").version, "0.3.0")
     assert.match(read("README.md"), /^# Work 0\.3$/m)

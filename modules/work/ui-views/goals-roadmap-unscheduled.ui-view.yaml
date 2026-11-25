@@ -17,6 +17,7 @@ display:
       - created
       - target_date
       - children
+      - tasks
       - status
     sort: -created
     options:
