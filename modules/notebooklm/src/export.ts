@@ -293,6 +293,15 @@ export function schemaBrief(modules: ModuleEntry[], descriptors: Descriptors, om
 
 const demote = (md: unknown) => String(md).replace(/^(#{1,4})(\s)/gm, (_, h, s) => `${h}##${s}`)
 
+/** A PAGE'S TEXT IS TEXT, AND A LINE OF IT THAT STARTS WITH HASHES WAS NEVER A HEADING ON THE PAGE. Written
+ *  as it is under the page's `### <title>` line, `# of open items` reads as a heading above the record and
+ *  `## tasks/some-id` as another record's section. The body's rule (two levels down) would still put a `#`
+ *  line at `###`, beside the block it sits in, so a page's text goes three down and stops at six: no line of
+ *  it is a heading of the block's level or above. Five and six hashes are below it already, seven or more
+ *  are not a heading, and a line with no hashes at its start is left byte for byte. */
+const demotePage = (text: string) =>
+  text.replace(/^( {0,3})(#{1,4})(?=\s|$)/gm, (_, indent, h) => indent + "#".repeat(Math.min(6, h.length + 3)))
+
 /** A REFERENCE INTO A WITHHELD COLLECTION IS ITSELF A DISCLOSURE, and the sharper half is that an
  *  id is not an opaque handle here — ids are authored, so they carry account numbers, people's names
  *  and trip destinations. Withholding `finance/accounts` while an exported task still reads
@@ -324,7 +333,8 @@ function value(v: unknown, labels: Map<string, string>): string {
 
 /** One record as a `## <collection>/<id>` section: kept fields as a list, the body after a blank line, then
  *  each html field as a `### <its title, or its name>` block holding the page's text — never its markup, and
- *  never in the list. A sensitive field was dropped before any of this; a page with no text adds nothing. */
+ *  never in the list — with any line of it that starts with hashes put below the block (demotePage). A
+ *  sensitive field was dropped before any of this; a page with no text adds nothing. */
 export function renderRecord(
   d: Descriptor,
   id: string,
@@ -343,7 +353,7 @@ export function renderRecord(
   const defs = dt.fieldsOf(d) as Record<string, { title?: unknown }>
   for (const k of pages) {
     const text = k in kept ? htmlToText(kept[k]) : ""
-    if (text) lines.push("", `### ${flat(defs[k]?.title) || k}`, text)
+    if (text) lines.push("", `### ${flat(defs[k]?.title) || k}`, demotePage(text))
   }
   return lines.join("\n") + "\n"
 }

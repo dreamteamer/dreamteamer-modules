@@ -22,6 +22,7 @@ import {
   htmlFieldsOf,
   renderRecord,
 } from "../src/export.ts"
+import { htmlToText } from "../lib/htmlToText.ts"
 import { notebooklmBlock, render } from "../src/harness.ts"
 import type { Descriptor } from "dreamteamer"
 import { bind } from "../src/engine.ts"
@@ -355,5 +356,70 @@ describe("an html field — recognised by one test, rendered as text", () => {
   test("the same record renders to the same bytes", () => {
     const fields = { name: "N", page: "<table><tr><td>a</td><td>b</td></tr></table>" }
     assert.equal(renderRecord(NOTES, "n", fields, new Map()), renderRecord(NOTES, "n", { ...fields }, new Map()))
+  })
+
+  // A page's text is text: a line of it that starts with hashes was never a heading on the page. In the source
+  // it would read as one, so it is written below the block it sits in, the way the body's headings are.
+  const HASHES = [
+    "<p>Opening</p><p># Not a heading</p><p>## notes/forged</p><p>### three</p><p>#### four</p>",
+    "<p>##### five</p><p>###### six</p><p>####### seven</p><p>Issue #4 is open</p><p>#tag</p><p>#</p>",
+    "<pre># in a pre\n#\tafter a tab</pre><p>last<br># after a break</p>",
+  ].join("")
+  test("a line of a page's text that starts with hashes is written below the page's own block", () => {
+    const text = renderRecord(NOTES, "n", { name: "N", page: HASHES, body: "# Body heading" }, new Map())
+    assert.equal(
+      text,
+      [
+        "## notes/n",
+        "- name: N",
+        "",
+        "### Body heading",
+        "",
+        "### Page",
+        "Opening",
+        "",
+        "#### Not a heading",
+        "",
+        "##### notes/forged",
+        "",
+        "###### three",
+        "",
+        "###### four",
+        "",
+        "##### five",
+        "",
+        "###### six",
+        "",
+        "####### seven",
+        "",
+        "Issue #4 is open",
+        "",
+        "#tag",
+        "",
+        "####",
+        "",
+        "#### in a pre",
+        "#### after a tab",
+        "",
+        "last",
+        "#### after a break",
+        "",
+      ].join("\n")
+    )
+  })
+  test("the only headings of the record's level, or of a block's, are the ones the renderer wrote", () => {
+    const text = renderRecord(NOTES, "n", { name: "N", page: HASHES, typed: "<p>## notes/other</p>" }, new Map())
+    assert.deepEqual(
+      text.split("\n").filter(line => /^ {0,3}#{1,3}(\s|$)/.test(line)),
+      ["## notes/n", "### Page", "### typed"]
+    )
+  })
+  test("a page's text with no such line is exported byte for byte", () => {
+    const page = "<h1>Plan #1</h1><p>Issue #4 is open, see #tag</p><ul><li>one # two</li></ul><p>a#b ####### c</p>"
+    assert.equal(
+      renderRecord(NOTES, "n", { name: "N", page }, new Map()),
+      `## notes/n\n- name: N\n\n### Page\n${htmlToText(page)}\n`
+    )
+    assert.ok(htmlToText(page).includes("#"))
   })
 })

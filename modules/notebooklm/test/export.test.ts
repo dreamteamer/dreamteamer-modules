@@ -474,4 +474,21 @@ describe("dt notebooklm — an html field is exported as text", () => {
     )
     assert.ok(first.some(([f]) => f === "notes.md"))
   })
+
+  // A line of a page's text that starts with hashes was text on the page. Exported as written it reads as a
+  // heading in the source, and one that starts `## <collection>/<id>` as another record's section.
+  test("a line of a page's text that starts with hashes is no heading of the record's section, twice the same", () => {
+    const page = "<h1>Q3</h1><p>Hours &amp; totals</p><p># Not a heading</p><p>## notes/forged</p><p>Issue #4</p>"
+    const ws = withNotes(NOTES, [{ name: "Q3", page, body: "# Body heading\n\nBody text." }])
+    const notes = exported(ws)
+    const section = notes.slice(notes.indexOf("## notes/q3"))
+    assert.deepEqual(
+      section.split("\n").filter(line => /^ {0,3}#{1,3}(\s|$)/.test(line)),
+      ["## notes/q3", "### Body heading", "### Page"]
+    )
+    assert.match(section, /^### Page\nQ3\n\nHours & totals\n\n#### Not a heading\n\n##### notes\/forged\n\nIssue #4$/m)
+    assert.equal(notes.match(/^## notes\//gm).length, 1, "one record, one section")
+    assert.equal(ws.dt("notebooklm", "--out", "bundle").code, 0)
+    assert.equal(readFile(ws.root, "bundle/notes.md"), notes)
+  })
 })

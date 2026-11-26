@@ -37,8 +37,10 @@ references to records that were withheld. Prose inside a record is not scanned; 
 is exported as the text a reader gets from it: headings and paragraphs as lines, a list item as
 `- item`, a table row as its cells joined by ` | `, a link as `text (address)`, a picture as its alt
 text in square brackets. The text sits in a block of its own under the field's title, after the
-record's fields and body, and the field is not in the list of fields. Comments, scripts and styles
-are dropped; no markup is sent. Marked `sensitive: true`, such a field is left out like any other.
+record's fields and body, and the field is not in the list of fields. A line of the text that starts
+with one to four `#` gets more of them (three more, six at most), so it reads as a heading below the
+block and never as the record's or another record's. Comments, scripts and styles are dropped; no
+markup is sent. Marked `sensitive: true`, such a field is left out like any other.
 
 ## what a descriptor cannot say
 
