@@ -74,7 +74,7 @@ rows as `core` does, unfolded.
 | [`@dreamteamer/files`](modules/files) | files on mounted drives as records, kept level by `dt files sync`, with your notes on each | — |
 | [`@dreamteamer/workflows`](modules/workflows) | a chain of commands over sets of records, written once, run with `/workflow:run` | — |
 | [`@dreamteamer/artifacts`](modules/artifacts) | built pages a person opens — a pitch, a prototype, a report — kept as a folder with `index.html` | — |
-| [`@dreamteamer/ui-html`](modules/ui-html) | a page on a record: the `html-page` mixin, a field of static HTML the desktop app draws in a sandboxed frame | — |
+| [`@dreamteamer/ui-html`](modules/ui-html) | a page on a record: the `html-page` mixin, a field of static HTML the desktop app draws in a sandboxed frame; warnings in `dt check` for what the frame will not run or load; `dt html` | — |
 | [`@dreamteamer/sessions`](modules/sessions) | sittings of work — a coding-agent session, a person's block — with `dt session` and the metrics read from a transcript | users |
 | [`@dreamteamer/metrics`](modules/metrics) | named measures tracked over time, the definition and its dated readings in one record | users |
 

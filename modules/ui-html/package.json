@@ -25,6 +25,7 @@
 	"files": [
 		"README.md",
 		"mixins",
+		"skills",
 		"dist"
 	],
 	"peerDependencies": {
@@ -39,7 +40,7 @@
 		"title": "HTML pages",
 		"engine": ">=0.50.0",
 		"extension": "./dist/lib/activate.js",
-		"description": "A page on a record. The `html-page` mixin gives a collection one field, `page`: static HTML of 204,800 characters at most, which the desktop app draws in a sandboxed frame where no script runs and nothing is loaded. The package also exports `htmlToText`, a page as the text a reader gets from it."
+		"description": "A page on a record. The `html-page` mixin gives a collection one field, `page`: static HTML of 204,800 characters at most, which the desktop app draws in a sandboxed frame where no script runs and nothing is loaded. `dt check` warns about what the frame will not run or load, `dt html` prints those warnings for one record and a page as text, and the `writing-html-pages` skill says how to write one."
 	},
 	"scripts": {
 		"prepack": "node ../../scripts/build.ts --module=ui-html"
