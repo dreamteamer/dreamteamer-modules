@@ -44,6 +44,7 @@ test("the repo carries every module it is meant to", () => {
     "search",
     "sessions",
     "tasks",
+    "ui-html",
     "users",
     "wikis",
     "work",

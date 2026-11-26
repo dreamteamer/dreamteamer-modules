@@ -1,0 +1,21 @@
+name: html-page
+description: >-
+  page: one field holding the record as a page of static HTML, 204,800 characters at most, drawn by the
+  desktop app in a sandboxed frame and edited as HTML.
+use_when: >-
+  a collection's records need a page that markdown cannot show (layout, colour, tables, inline SVG): list
+  this mixin and the field is declared. For a field of another name, a second page, or one that is
+  `sensitive`, hidden from lists or held to another limit, write the same lines by hand instead: a
+  collection cannot change a field a mixin declares.
+fields:
+  page:
+    type: string
+    title: Page
+    maxLength: 204800
+    description: >-
+      The record as a rich page, for what markdown cannot show: layout, colour, tables, inline SVG, pictures as
+      data: addresses. Static HTML only: no script runs and nothing is loaded; the desktop app draws it in a
+      sandboxed frame. Write it with dt set.
+    display:
+      viewer: html
+      editor: html

@@ -45,6 +45,7 @@ holds its `dt status` line to the outcome this table declares. Four outcomes:
 | search | — | unit | — (qmd on PATH) |
 | sessions | users | no setup (needs SESSIONS_FOLDER) | |
 | tasks | users | no setup | |
+| ui-html | — | no setup | |
 | users | — | no setup | |
 | wikis | — | unit | — (qmd on PATH) |
 | work | projects, tasks, sessions | no setup | |

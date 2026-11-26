@@ -1,0 +1,46 @@
+{
+	"name": "@dreamteamer/ui-html",
+	"version": "0.1.0",
+	"description": "A page on a record: the html-page mixin, a field of static HTML the dreamteamer desktop app draws in a sandboxed frame.",
+	"license": "Apache-2.0",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dreamteamer/dreamteamer-modules.git",
+		"directory": "modules/ui-html"
+	},
+	"keywords": [
+		"dreamteamer",
+		"dreamteamer-module",
+		"html",
+		"page"
+	],
+	"exports": {
+		"./htmlToText": {
+			"types": "./dist/lib/htmlToText.d.ts",
+			"import": "./dist/lib/htmlToText.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"README.md",
+		"mixins",
+		"dist"
+	],
+	"peerDependencies": {
+		"@dreamteamer/notebooklm": ">=0.4.0"
+	},
+	"peerDependenciesMeta": {
+		"@dreamteamer/notebooklm": {
+			"optional": true
+		}
+	},
+	"dreamteamer": {
+		"title": "HTML pages",
+		"engine": ">=0.50.0",
+		"description": "A page on a record. The `html-page` mixin gives a collection one field, `page`: static HTML of 204,800 characters at most, which the desktop app draws in a sandboxed frame where no script runs and nothing is loaded. The package also exports `htmlToText`, a page as the text a reader gets from it."
+	},
+	"scripts": {
+		"prepack": "node ../../scripts/build.ts --module=ui-html"
+	}
+}
