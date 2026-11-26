@@ -144,9 +144,17 @@ only text.
 
 `@dreamteamer/notebooklm` 0.4.0 exports a page as text. Below 0.4.0 it exports a page's source, markup
 and all, as the field's value. This module names 0.4.0 as the oldest NotebookLM it sits beside, and
-that is held in two places: npm warns (`ERESOLVE overriding peer dependency`) and leaves an older
-NotebookLM out of `node_modules`, and when the two are installed side by side anyway `dt compile`
-refuses and names both. Update NotebookLM first: `dt update @dreamteamer/notebooklm`.
+what npm does beside an older one depends on where this module comes from.
+
+- Installed from the registry, as the line at the top does, npm refuses (`npm error code ERESOLVE`,
+  exit 1) and changes nothing; this module is not installed and NotebookLM stays as it was.
+- Installed from a local tarball, npm warns (`npm warn ERESOLVE overriding peer dependency`), exits 0
+  and removes the older NotebookLM from `node_modules`, so `dt notebooklm` is gone until NotebookLM
+  is installed again.
+
+When the two are put side by side anyway, `dt compile` refuses and names both. No page's source is
+exported on either route. The fix is the same for both: update NotebookLM to 0.4.0 or later first,
+`dt update @dreamteamer/notebooklm`, then install this module.
 
 A workspace that writes the field by hand, without this module, has no such guard: mark the field
 `sensitive: true` until the workspace has NotebookLM 0.4.0, and it does not travel at all.

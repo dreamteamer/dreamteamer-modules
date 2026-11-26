@@ -64,6 +64,39 @@ describe("the README", () => {
     assert.ok(readme.includes(`more than ${LINES_PER_PAGE} constructs`))
     assert.ok(readme.includes(`${pkg.peerDependencies["@dreamteamer/notebooklm"].replace(">=", "")} or later`))
   })
+
+  // What npm does beside an older NotebookLM depends on where the module comes from: measured, npm 11.7.0.
+  // From a registry, the install line at the top, it REFUSES and changes nothing; only from a local tarball
+  // does it warn and take the older NotebookLM out. The README says each, in npm's own words, and the fix.
+  test("its NotebookLM section says what npm does on each route, and the one fix", () => {
+    const section = readme.slice(readme.indexOf("\n## NotebookLM\n"))
+    assert.ok(section.startsWith("\n## NotebookLM\n"), "no NotebookLM section")
+    const oldest = pkg.peerDependencies["@dreamteamer/notebooklm"].replace(">=", "")
+    const sentence = (about: RegExp) =>
+      section
+        .replace(/\s+/g, " ")
+        .split(/(?<=[.:]) /)
+        .find(s => about.test(s)) ?? ""
+    // the registry: refused, nothing installed, nothing removed
+    const registry = sentence(/registry/)
+    assert.ok(registry.includes("`npm error code ERESOLVE`"), registry)
+    assert.match(registry, /refuses/)
+    assert.match(registry, /changes nothing/)
+    assert.doesNotMatch(registry, /warns/)
+    // a tarball: a warning, exit 0, and the older NotebookLM gone
+    const tarball = sentence(/tarball/)
+    assert.ok(tarball.includes("`npm warn ERESOLVE overriding peer dependency`"), tarball)
+    assert.match(tarball, /removes/)
+    assert.doesNotMatch(tarball, /refuses/)
+    // no sentence says npm only warns without saying on which route
+    assert.doesNotMatch(section, /npm warns \(`ERESOLVE overriding peer dependency`\) and leaves/)
+    assert.match(section, /`dt compile`\s+refuses/)
+    assert.match(section.replace(/\s+/g, " "), /no page's source is exported/i)
+    assert.ok(section.replace(/\s+/g, " ").includes(`to ${oldest} or later first`), "the fix names the version")
+    assert.ok(section.includes("`dt update @dreamteamer/notebooklm`"))
+    // and the skill does not carry the old sentence either
+    assert.doesNotMatch(skill, /npm warns/)
+  })
 })
 
 describe("the skill", () => {
