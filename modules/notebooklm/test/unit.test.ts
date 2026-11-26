@@ -19,6 +19,8 @@ import {
   PERSONA_MAX,
   PLANS,
   sourceLimit,
+  htmlFieldsOf,
+  renderRecord,
 } from "../src/export.ts"
 import { notebooklmBlock, render } from "../src/harness.ts"
 import type { Descriptor } from "dreamteamer"
@@ -294,5 +296,64 @@ describe("the harness block — rendered from the ctx compile hands a contribute
     const md = notebooklmBlock(ctx)
     for (const [plan, cap] of Object.entries(PLANS))
       assert.match(md, new RegExp(`^\\| ${plan} \\| ${cap} \\| \\d+ \\|$`, "m"))
+  })
+})
+
+describe("an html field — recognised by one test, rendered as text", () => {
+  const NOTES = compiled("notes", {
+    fields: {
+      name: { type: "string" },
+      page: { type: "string", title: "Page", display: { viewer: "html", editor: "html" } },
+      typed: { type: "html" },
+      plain: { type: "string", display: { viewer: "markdown" } },
+      secret: { type: "string", sensitive: true, display: { viewer: "html" } },
+      body: { type: "markdown", body: true },
+    },
+  })
+  test("htmlFieldsOf: a field whose type is html or whose display.viewer is html, and no other", () => {
+    assert.deepEqual(htmlFieldsOf(NOTES), ["page", "typed", "secret"])
+    assert.deepEqual(htmlFieldsOf(PEOPLE), [])
+  })
+  test("renderRecord leaves an html field out of the list and appends its text under its title, after the body", () => {
+    const text = renderRecord(
+      NOTES,
+      "weekly",
+      {
+        name: "Weekly",
+        page: "<h1>Plan</h1><ul><li>one</li></ul>",
+        typed: "<p>typed &amp; read</p>",
+        plain: "<b>kept as written</b>",
+        secret: "<p>never</p>",
+        body: "The meaning.",
+      },
+      new Map()
+    )
+    assert.equal(
+      text,
+      [
+        "## notes/weekly",
+        "- name: Weekly",
+        "- plain: <b>kept as written</b>",
+        "",
+        "The meaning.",
+        "",
+        "### Page",
+        "Plan",
+        "",
+        "- one",
+        "",
+        "### typed",
+        "typed & read",
+        "",
+      ].join("\n")
+    )
+  })
+  test("a value that is not a string, or holds no text, adds no block and no line", () => {
+    for (const page of [42, ["<p>a</p>"], { a: 1 }, null, undefined, "", "<p></p>", "<script>x()</script>"])
+      assert.equal(renderRecord(NOTES, "n", { name: "N", page }, new Map()), "## notes/n\n- name: N\n")
+  })
+  test("the same record renders to the same bytes", () => {
+    const fields = { name: "N", page: "<table><tr><td>a</td><td>b</td></tr></table>" }
+    assert.equal(renderRecord(NOTES, "n", fields, new Map()), renderRecord(NOTES, "n", { ...fields }, new Map()))
   })
 })

@@ -37,6 +37,12 @@ prints every field that WAS exported per collection; that list is the review.
   target. The lexicon the persona cannot afford in full.
 - **`dt · <collection>`** — one source per collection, `## <collection>/<id>` per record, references
   rendered as `companies/acme (Acme Ltd)`. Over `--max-words` it shards into `dt · <c> [n/m]`.
+- **a page as text** — a field drawn as a page (`display.viewer: html`) is not in the record's list
+  of fields. Its text follows the record's body under `### <the field's title>`: a list item as
+  `- item`, a table row as its cells joined by ` | `, a link as `text (address)`, a picture as its alt
+  text in brackets. No markup, script or style travels, so what the notebook can answer from a page
+  is what its text says: put the meaning in the body as well. A page marked `sensitive: true` is
+  left out like any other field.
 - **the persona** — a Markdown template with `{{workspace}}` `{{schema_brief}}` `{{sources}}`
   `{{omitted}}` `{{exported_at}}` `{{engine_version}}` `{{schema_title}}` `{{collections}}`; the
   module ships a default, `--instructions <file.md>` replaces it, an unknown placeholder is an

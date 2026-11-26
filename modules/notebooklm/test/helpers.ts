@@ -41,6 +41,33 @@ export const LEDGER = {
   },
 }
 
+/** A field drawn as a page: the shape a workspace writes for an html field. */
+export const PAGE_FIELD = {
+  type: "string",
+  title: "Page",
+  maxLength: 204800,
+  display: { viewer: "html", editor: "html" },
+}
+export const NOTES = {
+  description: "A note, with a page.",
+  storage: { suffix: "note" },
+  ids: { from: "{{ name | slug }}" },
+  fields: {
+    name: { type: "string", required: true },
+    page: PAGE_FIELD,
+    body: { type: "markdown", body: true },
+  },
+}
+/** A page with everything the text projection has a rule for, and two things that must not travel. */
+export const PAGE = [
+  "<h1>Northwind weekly</h1>",
+  `<p>Owner: <a href="/content/people/dana-oren">Dana Oren</a></p>`,
+  "<ul><li>First item</li><li>Second item</li></ul>",
+  "<table><tr><th>Week</th><th>Hours</th></tr><tr><td>34</td><td>12</td></tr></table>",
+  "<script>window.zq7script = 1 < 2</script>",
+  "<style>h1 { color: zq7style }</style>",
+].join("\n")
+
 export const EMAILS = ["ada@example.invalid", "grace@example.invalid", "linus@example.invalid"]
 
 export const DEFAULT_RECORDS = {

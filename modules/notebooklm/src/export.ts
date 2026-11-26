@@ -24,6 +24,7 @@ import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import type { Workspace } from "dreamteamer"
 import { dt, type Api } from "./engine.ts"
+import { htmlToText } from "../lib/htmlToText.ts"
 
 /** Sources per notebook, per plan — Google's published table (support.google.com/notebooklm/answer/16213268).
  *  A bare number is accepted too, for a Workspace or Enterprise tier the table does not name. */
@@ -105,6 +106,14 @@ export function omittedFields(d: Descriptor): string[] {
 export function exportedFieldsOf(d: Descriptor): string[] {
   const drop = new Set(omittedFields(d))
   return Object.keys(dt.storedFieldsOf(d)).filter(k => !drop.has(k))
+}
+
+/** The fields drawn as a page, in the descriptor's order: a field whose type is `html`, or whose
+ *  `display.viewer` is `html`. A notebook reads text, so such a field is exported as text (renderRecord). */
+export function htmlFieldsOf(d: Descriptor): string[] {
+  return Object.entries<any>(dt.fieldsOf(d))
+    .filter(([, f]) => f?.type === "html" || f?.display?.viewer === "html")
+    .map(([k]) => k)
 }
 
 /** Why a collection is not exported as records, or null when it is. */
@@ -313,7 +322,9 @@ function value(v: unknown, labels: Map<string, string>): string {
   return label ? `${s} (${label})` : s
 }
 
-/** One record as a `## <collection>/<id>` section: kept fields as a list, the body after a blank line. */
+/** One record as a `## <collection>/<id>` section: kept fields as a list, the body after a blank line, then
+ *  each html field as a `### <its title, or its name>` block holding the page's text — never its markup, and
+ *  never in the list. A sensitive field was dropped before any of this; a page with no text adds nothing. */
 export function renderRecord(
   d: Descriptor,
   id: string,
@@ -322,12 +333,18 @@ export function renderRecord(
 ): string {
   const bf = dt.bodyField(d)
   const { kept } = projectRecord(d, fields)
+  const pages = htmlFieldsOf(d)
   const lines = [`## ${d.name}/${id}`]
   for (const [k, v] of Object.entries(kept)) {
-    if (k === bf || v === undefined || v === null || v === "") continue
+    if (k === bf || pages.includes(k) || v === undefined || v === null || v === "") continue
     lines.push(`- ${k}: ${value(v, labels)}`)
   }
-  if (bf && kept[bf]) lines.push("", demote(kept[bf]).trim())
+  if (bf && kept[bf] && !pages.includes(bf)) lines.push("", demote(kept[bf]).trim())
+  const defs = dt.fieldsOf(d) as Record<string, { title?: unknown }>
+  for (const k of pages) {
+    const text = k in kept ? htmlToText(kept[k]) : ""
+    if (text) lines.push("", `### ${flat(defs[k]?.title) || k}`, text)
+  }
   return lines.join("\n") + "\n"
 }
 

@@ -33,6 +33,13 @@ unverified, because nothing local can prove a login. [SETUP.md](SETUP.md) has th
 **What never travels:** collections marked `sensitive: true`, fields marked `sensitive: true`, and
 references to records that were withheld. Prose inside a record is not scanned; keep secrets out of it.
 
+**A page travels as text.** A field drawn as a page (`display.viewer: html`, or a field of type `html`)
+is exported as the text a reader gets from it: headings and paragraphs as lines, a list item as
+`- item`, a table row as its cells joined by ` | `, a link as `text (address)`, a picture as its alt
+text in square brackets. The text sits in a block of its own under the field's title, after the
+record's fields and body, and the field is not in the list of fields. Comments, scripts and styles
+are dropped; no markup is sent. Marked `sensitive: true`, such a field is left out like any other.
+
 ## what a descriptor cannot say
 
 **`account` is a string, not a reference.** This package ships no accounts collection, and a
@@ -57,6 +64,13 @@ from there.
 **Tests** run `test/*.test.mjs` against the engine in the repo's devDependencies, or the checkout
 `DT_ENGINE_DIR` names. No test reaches the real `notebooklm` CLI: every spawn runs with a PATH whose
 only `notebooklm` is a stub.
+
+## 0.4.0 — an html field is exported as text
+
+Nothing to do but `dt update @dreamteamer/notebooklm`. A field whose `display.viewer` is `html` was
+exported as its value, markup and all, on one line of the record's list of fields; it is now exported
+as text in a labelled block after the record. A source that holds such a record changes once, so the
+next sync replaces it.
 
 ## 0.2.2 — the nav is nav.yaml (cr-dt-008)
 

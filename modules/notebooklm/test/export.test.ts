@@ -11,7 +11,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import { readFile } from "./fixture.ts"
-import { fixture, filesUnder, tripwire, EMAILS, PEOPLE, LEDGER, COMPANIES } from "./helpers.ts"
+import { fixture, filesUnder, tripwire, EMAILS, PEOPLE, LEDGER, COMPANIES, NOTES, PAGE, PAGE_FIELD } from "./helpers.ts"
 
 const VERSION = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")).version
 const bundleFiles = (root, out = "bundle") =>
@@ -383,5 +383,95 @@ describe("the marks are written by the schema verbs, and the export follows them
     assert.equal(ws.dt("notebooklm", "--out", "bundle").code, 0)
     assert.deepEqual(manifest(ws.root).omitted.collections, ["ledger", "people"])
     assert.ok(!bundleFiles(ws.root).includes("people.md"))
+  })
+})
+
+// A page is HTML, and a notebook reads text: an html field (display.viewer: html) is exported as what a reader
+// gets from the page, in a labelled block after the record's list of fields, never as markup.
+describe("dt notebooklm — an html field is exported as text", () => {
+  const withNotes = (notes, records) =>
+    fixture({ collections: { companies: COMPANIES, notes }, records: { companies: [], notes: records } })
+  const exported = ws => {
+    const res = ws.dt("notebooklm", "--out", "bundle")
+    assert.equal(res.code, 0, res.stderr)
+    return readFile(ws.root, "bundle/notes.md")
+  }
+
+  test("a page becomes its heading, dashed items, barred rows and text (address), with no tag, script or style", () => {
+    const ws = withNotes(NOTES, [{ name: "Weekly", page: PAGE, body: "# Summary\n\nThe meaning is here." }])
+    const notes = exported(ws)
+    assert.match(notes, /^### Page$/m, "the block is labelled with the field's title")
+    assert.match(notes, /^Northwind weekly$/m)
+    assert.match(notes, /^Owner: Dana Oren \(\/content\/people\/dana-oren\)$/m)
+    assert.match(notes, /^- First item\n- Second item$/m)
+    assert.match(notes, /^Week \| Hours\n34 \| 12$/m)
+    assert.ok(!notes.includes("<"), `markup travelled:\n${notes}`)
+    assert.ok(!/zq7/.test(notes), "a script body or a style rule travelled")
+    assert.doesNotMatch(notes, /^- page:/m, "the field is not in the list of fields as well")
+    // after the list of fields and after the body
+    assert.ok(notes.indexOf("- name: Weekly") < notes.indexOf("### Summary"))
+    assert.ok(notes.indexOf("The meaning is here.") < notes.indexOf("### Page"))
+    // and no other file holds the markup either
+    for (const [f, text] of filesUnder(path.join(ws.root, "bundle")))
+      assert.ok(!/zq7|<h1>|<table>/.test(text), `markup in bundle/${f}`)
+  })
+
+  test("a sensitive page field is left out: no block, no text, and the omission is named", () => {
+    const ws = withNotes({ ...NOTES, fields: { ...NOTES.fields, page: { ...PAGE_FIELD, sensitive: true } } }, [
+      { name: "Weekly", page: "<h1>zq7-canary-page</h1>", body: "Kept." },
+    ])
+    const notes = exported(ws)
+    assert.doesNotMatch(notes, /### Page/)
+    for (const [f, text] of filesUnder(path.join(ws.root, "bundle")))
+      assert.ok(!text.includes("zq7-canary-page"), `the page leaked into bundle/${f}`)
+    assert.deepEqual(manifest(ws.root).omitted.fields.notes, ["page"])
+    assert.match(notes, /Kept\./)
+  })
+
+  test("a page inside a sensitive collection is left out with the collection", () => {
+    const ws = withNotes({ ...NOTES, sensitive: true }, [{ name: "Weekly", page: "<h1>zq7-canary-page</h1>" }])
+    assert.equal(ws.dt("notebooklm", "--out", "bundle").code, 0)
+    assert.ok(!bundleFiles(ws.root).includes("notes.md"))
+    for (const [f, text] of filesUnder(path.join(ws.root, "bundle")))
+      assert.ok(!text.includes("zq7-canary-page"), `the page leaked into bundle/${f}`)
+  })
+
+  test("an empty page, and a record with none, add no block", () => {
+    const ws = withNotes(NOTES, [{ name: "Empty", page: "" }, { name: "None" }, { name: "Blank", page: "<p> </p>" }])
+    const notes = exported(ws)
+    assert.doesNotMatch(notes, /### Page/)
+    assert.match(notes, /^## notes\/empty$/m)
+    assert.match(notes, /^## notes\/none$/m)
+  })
+
+  test("two html fields give two blocks, in field order, each under its title", () => {
+    const two = {
+      ...NOTES,
+      fields: { ...NOTES.fields, appendix: { type: "string", display: { viewer: "html" } } },
+    }
+    const ws = withNotes(two, [{ name: "Both", page: "<p>The first page</p>", appendix: "<p>The second page</p>" }])
+    const notes = exported(ws)
+    // compile gives a field that declares no title one made from its name; an uncompiled field falls back to
+    // the name itself (unit.test.ts)
+    assert.match(notes, /^### Page\nThe first page\n\n### [Aa]ppendix\nThe second page$/m)
+    assert.doesNotMatch(notes, /^- (page|appendix):/m)
+  })
+
+  test("a second export of an unchanged workspace writes byte-identical sources", () => {
+    const ws = withNotes(NOTES, [{ name: "Weekly", page: PAGE, body: "Kept." }])
+    assert.equal(ws.dt("notebooklm", "--out", "bundle").code, 0)
+    const sources = () => bundleFiles(ws.root).filter(f => f !== "instructions.md")
+    const first = sources().map(f => [f, readFile(ws.root, `bundle/${f}`)])
+    const hashes = manifest(ws.root).sources.map(s => [s.title, s.sha256])
+    assert.equal(ws.dt("notebooklm", "--out", "bundle").code, 0)
+    assert.deepEqual(
+      sources().map(f => [f, readFile(ws.root, `bundle/${f}`)]),
+      first
+    )
+    assert.deepEqual(
+      manifest(ws.root).sources.map(s => [s.title, s.sha256]),
+      hashes
+    )
+    assert.ok(first.some(([f]) => f === "notes.md"))
   })
 })
