@@ -4,7 +4,11 @@ import fs from "node:fs"
 import path from "node:path"
 import assert from "node:assert/strict"
 import yaml from "js-yaml"
-import { installPacked, run, virginWorkspace } from "../../../tests/helpers/workspace.ts"
+import { pathToFileURL } from "node:url"
+import { ENGINE, engineEntry, installPacked, run, virginWorkspace } from "../../../tests/helpers/workspace.ts"
+
+/** The engine's public API: what `activate(dt)` is handed in a real workspace. */
+export const api = await import(pathToFileURL(engineEntry(ENGINE)).href)
 
 export const LIMIT = 204800
 
@@ -39,14 +43,20 @@ export const ok = r => {
   return r
 }
 
-/** A compiled workspace: this module installed, the workspace module depending on it, and `collections` written. */
-export function workspace(collections: Record<string, string> = { briefs: briefsYaml() }, { compile = true } = {}) {
+/** A compiled workspace: this module installed, the workspace module depending on it, and `collections` written.
+ *  With `module: false` the workspace has no ui-html at all: what `dt check` says without it. */
+export function workspace(
+  collections: Record<string, string> = { briefs: briefsYaml() },
+  { compile = true, module = true } = {}
+) {
   const root = virginWorkspace()
-  installPacked(root, ["ui-html"])
-  const manifest = path.join(root, "modules", "default", "package.json")
-  const pkg = JSON.parse(fs.readFileSync(manifest, "utf8"))
-  pkg.dreamteamer = { ...(pkg.dreamteamer ?? {}), dependencies: ["@dreamteamer/ui-html"] }
-  fs.writeFileSync(manifest, JSON.stringify(pkg, null, "\t") + "\n")
+  if (module) {
+    installPacked(root, ["ui-html"])
+    const manifest = path.join(root, "modules", "default", "package.json")
+    const pkg = JSON.parse(fs.readFileSync(manifest, "utf8"))
+    pkg.dreamteamer = { ...(pkg.dreamteamer ?? {}), dependencies: ["@dreamteamer/ui-html"] }
+    fs.writeFileSync(manifest, JSON.stringify(pkg, null, "\t") + "\n")
+  }
   for (const [name, text] of Object.entries(collections)) writeCollection(root, name, text)
   if (compile) ok(dt(root, "compile"))
   return root
@@ -83,3 +93,31 @@ export function handEdit(root: string, collection: string, id: string, fields: R
 /** A single argument this long reaches the engine only where the platform passes it: Linux stops at 128 KiB an argument. */
 export const BIG_ARGUMENT =
   process.platform === "darwin" ? false : `a 200 KB argument cannot be passed to a command on ${process.platform}`
+
+/** A page with one of everything the frame will not run or load. */
+export const HOSTILE = [
+  `<h1 onclick="steal()">Northwind</h1>`,
+  `<script>fetch("https://harbor-mutual.example/x")</script>`,
+  `<a href="javascript:go()" target="_blank">go</a>`,
+  `<form action="/submit"><input name="q"></form>`,
+  `<iframe src="https://harbor-mutual.example/"></iframe>`,
+  `<object data="https://harbor-mutual.example/a.swf"></object><embed src="b.swf"><base href="https://harbor-mutual.example/">`,
+  `<img src="https://harbor-mutual.example/pixel.png" alt="">`,
+  `<link rel="stylesheet" href="https://harbor-mutual.example/a.css">`,
+  `<meta http-equiv="refresh" content="0">`,
+  `<style>@import "https://harbor-mutual.example/b.css"; p { background: url(https://harbor-mutual.example/c.png) }</style>`,
+].join("\n")
+/** A rich page with none of them. */
+export const CLEAN = [
+  `<h1 style="color:#036">Northwind</h1>`,
+  `<p>Owner: <a href="/content/briefs/clean">Dana Oren</a>, see <a href="#totals">the totals</a>.</p>`,
+  `<table id="totals"><tr><th>Week</th><th>Hours</th></tr><tr><td>34</td><td>12</td></tr></table>`,
+  `<img alt="chart" src="data:image/png;base64,AAAA">`,
+  `<svg viewBox="0 0 10 10"><path d="M0 0h10v10z" fill="#036"/></svg>`,
+].join("\n")
+
+/** The warning lines of a `dt check` run: every line the engine printed with its warning mark. */
+export const warningLines = (r: { stdout: string; stderr: string }) =>
+  out(r)
+    .split("\n")
+    .filter(l => l.startsWith("\u26a0"))
