@@ -110,6 +110,36 @@ jobs:
           [ "$fail" -eq 0 ] || exit 1
           echo "✔ the published tree is clean — no private name, no credential shape, no Hebrew outside the allow-list"
 
+      # The tree is not all a tag publishes: its NAME, and an annotated tag's message, reach the public log and
+      # every clone, and no branch scan ever reads them (rk-01; issue 2026-09-09). Same secret, same rules as the
+      # tree, and the same fail-closed probe. Nothing matched is printed.
+      - name: tag gate — the tag's name and annotation
+        env:
+          LEAK_NAMES: ${{ secrets.LEAK_NAMES }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -uo pipefail
+          if [ -z "${LEAK_NAMES:-}" ]; then
+            echo "::error::secrets.LEAK_NAMES is not set, so the tag cannot be checked — a skipped gate is not a passed gate."
+            exit 1
+          fi
+          pat="$RUNNER_TEMP/leak-tag.pat"; trap 'rm -f "$pat"' EXIT
+          printf '%s' "$LEAK_NAMES" > "$pat"
+          # the annotated tag object itself: a checkout of a tag can leave only the commit it points at
+          git fetch --no-tags --quiet --force origin "+refs/tags/$TAG:refs/tags/$TAG"
+          text=$(printf 'tag %s\n' "$TAG"; if [ "$(git cat-file -t "refs/tags/$TAG")" = tag ]; then git cat-file -p "refs/tags/$TAG"; fi)
+          rc=0; printf '%s\n' "$text" | grep -qiE -f "$pat" || rc=$?
+          case "$rc" in
+            0) echo "::error::the tag's name or annotation matches a private name"; exit 1;;
+            1) ;;
+            *) echo "::error::secrets.LEAK_NAMES is not a valid extended regex (grep exit $rc)"; exit 1;;
+          esac
+          if printf '%s\n' "$text" | perl -CSD -ne 'BEGIN { $h = 0 } $h = 1 if /[\x{0590}-\x{05FF}]/; END { exit $h }'; then :; else
+            echo "::error::the tag's annotation carries Hebrew codepoints"
+            exit 1
+          fi
+          echo "✔ the tag's name and annotation are clean"
+
       # ⚠ A TAG ON AN ARBITRARY COMMIT PUBLISHES A TREE CI HAS NEVER SEEN. main is protected (`ci` and
       # `leak-scan` required on its head, admins included), but there is no tag ruleset, so a tag can
       # still name any commit. The release runbook (README.md) pushes a branch, waits for green,

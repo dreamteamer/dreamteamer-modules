@@ -9,18 +9,35 @@ import assert from "node:assert"
 import fs from "node:fs"
 import path from "node:path"
 import { createHmac } from "node:crypto"
+import { execFileSync } from "node:child_process"
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 
+// Dotfiles are scanned (issue 2026-11-25): this walk skipped every name starting with a dot, so a stray
+// `.tsconfig.build.<pid>.json` carrying another machine's home path passed this suite and reached main. A dot-named
+// DIRECTORY is still skipped — tooling state such as .claude/ or .temp/ — except .github, which is tracked and
+// public; a dotfile git ignores (a local .env) is machine-only and never committed.
+const IGNORED = new Set(
+  execFileSync("git", ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  })
+    .split("\0")
+    .filter(Boolean)
+)
+
 function* walk(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.name === "node_modules" || e.name === ".git" || e.name.startsWith(".")) continue
+    if (e.name === "node_modules" || e.name === ".git") continue
+    if (e.isDirectory() && e.name.startsWith(".") && e.name !== ".github") continue
     const p = path.join(dir, e.name)
     // a module's build is not source and is never committed: its dist/ (scripts/build.ts, and Vite's minified ui
     // bundles, whose tables are not reviewable text). The gate reads the source it is built from.
     if (e.isDirectory() && e.name === "dist" && path.dirname(path.relative(ROOT, dir)) === "modules") continue
     if (e.isDirectory()) yield* walk(p)
-    else if (/\.(md|yaml|yml|json|mjs|js|ts|mts|tsx|py|toml|sh|txt)$/.test(e.name)) yield p
+    else if (e.name.startsWith(".")) {
+      if (!IGNORED.has(path.relative(ROOT, p))) yield p
+    } else if (/\.(md|yaml|yml|json|mjs|js|ts|mts|tsx|py|toml|sh|txt)$/.test(e.name)) yield p
   }
 }
 const FILES = [...walk(ROOT)].filter(f => !f.endsWith(path.join("tests", "leak-gate.test.ts")))
@@ -62,6 +79,11 @@ const HEBREW_ALLOWED = ALLOW.get("hebrew") ?? new Set()
 describe("the leak gate", () => {
   test("the scan is not vacuous", () => {
     assert.ok(FILES.length > 50, `expected the whole module tree, saw ${FILES.length} files`)
+  })
+  test("tracked dotfiles and .github are scanned (issue 2026-11-25: the walk skipped every dot-named file)", () => {
+    const scanned = new Set(FILES.map(rel))
+    for (const f of [".gitignore", ".leak-scan-allow", ".github/workflows/release.yml"])
+      assert.ok(scanned.has(f), `${f} is tracked and must be scanned`)
   })
   test("no source-vault name", () => {
     // Assembled rather than spelled: a literal here is itself a hit for the pre-commit hook that
