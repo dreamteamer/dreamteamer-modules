@@ -138,7 +138,10 @@ describe("dt html", () => {
       const r = dt(other, "html", "check", "memos")
       assert.equal(r.status, 0)
       assert.equal(lines(r.stdout).length, 2, r.stdout)
-      assert.match(lines(r.stdout)[0], /sheet: field declares no maxLength: only the app's own ceiling holds/)
+      assert.match(
+        lines(r.stdout)[0],
+        /sheet: field declares no maxLength: only the app's own ceiling holds; type: html would hold it to 204,800/
+      )
       assert.equal(lines(r.stdout)[1], "0 pages read, 1 warning")
     })
   })

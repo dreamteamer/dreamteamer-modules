@@ -1,8 +1,8 @@
 # @dreamteamer/ui-html
 
 A page on a record of a [dreamteamer](https://github.com/dreamteamer/dreamteamer) workspace: a field of
-static HTML, declared in one line with the `html-page` mixin and drawn by the dreamteamer desktop app in a
-sandboxed frame. The record stays a file: the page is one of its fields, read, diffed and committed
+the engine's `html` type, declared in one line with the `html-page` mixin and drawn by the dreamteamer
+desktop app in a sandboxed frame. The record stays a file: the page is one of its fields, read, diffed and committed
 like the others.
 
 ```bash
@@ -12,13 +12,13 @@ npx dreamteamer compile
 
 | needs | for |
 |---|---|
-| nothing | the mixin, the warnings in `dt check`, `dt html`, the `writing-html-pages` skill |
+| dreamteamer 0.54.0 or later, the first engine with the `html` field type | the mixin, the warnings in `dt check`, `dt html`, the `writing-html-pages` skill |
 | the dreamteamer desktop app | seeing a page drawn |
 | `@dreamteamer/notebooklm` 0.4.0 or later, when NotebookLM is installed | a page exported as text |
 
 ## what it ships
 
-- **`html-page`**, a mixin: one field, `page`, 204,800 characters at most.
+- **`html-page`**, a mixin: one field, `page`, of type `html`, 204,800 characters at most.
 - **warning lines in `dt check`** for what a page holds that the app's frame will not run or load.
 - **`dt html check`** and **`dt html text`**: those warnings for one collection or one record, and a
   page as text.
@@ -30,7 +30,7 @@ npx dreamteamer compile
 
 - **It draws nothing.** The desktop app draws a page. In a terminal and in a list, a page is its
   source or its text.
-- **It refuses nothing.** `maxLength` on the field is what refuses a page, and only for its size. The
+- **It refuses nothing.** The engine refuses a page over the field's limit, and only for its size. The
   warnings are printed and never counted: `dt check` has the same count of violations and the same
   exit code with and without this module.
 - **It is not what keeps a page from acting.** The app's frame is: no script runs in it, nothing is
@@ -68,23 +68,27 @@ The mixin declares exactly this field, and a collection that lists the mixin can
 ```yaml
 fields:
   page:
-    type: string
+    type: html
     title: Page
     maxLength: 204800
     description: >-
       The record as a rich page, for what markdown cannot show: layout, colour, tables, inline SVG, pictures as
       data: addresses. Static HTML only: no script runs and nothing is loaded; the desktop app draws it in a
       sandboxed frame. Write it with dt set.
-    display:
-      viewer: html
-      editor: html
 ```
 
 A collection that needs the field under another name, a second page, a `sensitive` page, one hidden
-from lists or one held to another limit writes those lines by hand in its own `fields`, without the
-mixin. The field is an html field by its `display.viewer`; the check, the verb and the NotebookLM
-export all read it the same way. Keep `maxLength`: a field without one draws a warning line, and
-only the app's own ceiling holds it.
+from lists or one held to another limit declares it by hand in its own `fields`, without the mixin,
+with `type: html` (`dt add-field <collection> --name sheet --type html`). The type is what makes it a
+page: the engine holds it to 204,800 characters unless it declares another `maxLength`, and the app
+draws and edits it as a page with no `display` keys. The mixin states the limit anyway, so the field
+reads the same in the descriptor as in the compiled runtime.
+
+A field written before the type existed, `type: string` with `display.viewer: html`, is still an html
+field: the app draws it, and the check, the verb and the NotebookLM export read it the same way. But
+the engine gives a string no limit of its own, so such a field without a `maxLength` draws a warning
+line in `dt check` and only the app's own ceiling holds it. Change it to `type: html`; its values stay
+as they are.
 
 ## writing and reading one
 
@@ -96,7 +100,9 @@ npx dreamteamer html text briefs/northwind-weekly
 
 Write a page with `set`, on a record that exists: `set` stores it as a block of lines, and a page
 given to `add` may be stored folded or quoted. A value over the limit is refused and nothing is
-written; the limit counts characters, not bytes. `html text` prints the page as text: a list item as
+written; the limit counts characters, not bytes. On Linux one argument to a command is at most 128
+KiB, so a larger page cannot be given to `set` there: write it into the record's file by hand and run
+`dt check`, which reports a page over the limit. `html text` prints the page as text: a list item as
 `- item`, a table row as its cells joined by ` | `, a link as `text (address)`.
 
 ## what the frame does with a page

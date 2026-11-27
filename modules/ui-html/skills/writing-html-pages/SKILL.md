@@ -6,8 +6,8 @@ description: "Use when a record should carry a page of HTML, or one already does
 # writing html pages
 
 **A page is a field of static HTML on a record.** The dreamteamer desktop app draws it in a sandboxed
-frame; everywhere else it is text. The field is an ordinary string field whose `display.viewer` is
-`html`, so the record stays a file you can read, diff and commit.
+frame; everywhere else it is text. The field is of the engine's `html` type (dreamteamer 0.54.0 and
+later), so the record stays a file you can read, diff and commit.
 
 ## when a page, and when not
 
@@ -47,17 +47,19 @@ field a mixin declares, so these are the mixin's lines, in the descriptor, in pl
 ```yaml
 fields:
   sheet:
-    type: string
+    type: html
     title: Sheet
     maxLength: 204800
     description: The record as a page of static HTML.
-    display:
-      viewer: html
-      editor: html
 ```
 
-Keep `maxLength`. It is the only thing that refuses a page for its size; a field without one draws a
-warning line in `dt check`, and only the app's own ceiling holds it.
+or `dt add-field memos --name sheet --type html`. The type is what makes it a page: the engine refuses
+a value over 204,800 characters unless the field declares another `maxLength`, and the app draws and
+edits it as a page with no `display` keys.
+
+A field written before the type existed, `type: string` with `display.viewer: html`, is still read as
+a page, but a string has no limit of its own: without a `maxLength` it draws a warning line in
+`dt check`, and only the app's own ceiling holds it. Change its type to `html`; its values stay as they are.
 
 ## writing a page
 
@@ -72,6 +74,8 @@ you can read in the file and in a diff, and a page given to `dt add` may be stor
 Create the record first (`dt add briefs --name "Northwind weekly"`), then set its page.
 
 A value over the limit is refused and nothing is written. The limit counts characters, not bytes.
+On Linux one argument is at most 128 KiB, so a larger page cannot go through `dt set` there: write it
+into the record's file and run `dt check`, which reports a page over the limit.
 
 ## what the frame does with a page, and so what not to write
 

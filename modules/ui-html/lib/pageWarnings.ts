@@ -2,7 +2,8 @@
 //
 // A page is the string a record holds over an html field (lib/htmlFields.ts). Each construct htmlWarnings
 // finds in one becomes a line that names the record's file and the field. Two more lines are about the field
-// and not about a page: one for an html field that declares no maxLength, and one for a collection whose
+// and not about a page: one for an html field with no maxLength in its compiled form (a `type: string` field drawn by
+// `viewer: html`; a `type: html` one always has the engine's default), and one for a collection whose
 // records could not be read. Nothing here refuses anything, and nothing here is counted by dt check.
 import path from "node:path"
 import { htmlFieldsOf } from "./htmlFields.ts"
@@ -89,7 +90,7 @@ export function readPages({ ws, dt }: PageReader, scope: Scope = {}): { pages: n
           name,
           field,
           "field",
-          "declares no maxLength: only the app's own ceiling holds",
+          "declares no maxLength: only the app's own ceiling holds; type: html would hold it to 204,800",
           `collection ${name}`
         )
 

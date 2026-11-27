@@ -18,6 +18,7 @@ import {
   HOSTILE,
   CLEAN,
   warningLines,
+  compiledFields,
 } from "./helpers.ts"
 import activate from "../lib/activate.ts"
 import { readPages, pageWarnings, CEILING, LINES_PER_PAGE } from "../lib/pageWarnings.ts"
@@ -176,7 +177,20 @@ describe("a field with no maxLength", () => {
     const lines = warningLines(r)
     assert.equal(lines.length, 1, lines.join("\n"))
     assert.match(lines[0], /memos/)
-    assert.match(lines[0], /sheet: field declares no maxLength: only the app's own ceiling holds \(collection memos\)/)
+    assert.match(
+      lines[0],
+      /sheet: field declares no maxLength: only the app's own ceiling holds; type: html would hold it to 204,800 \(collection memos\)/
+    )
+  })
+
+  test("a field of type html declares none and draws none: the engine's default reaches the compiled field", () => {
+    const root = workspace({
+      memos: briefsYaml({ mixin: false, fields: "  sheet:\n    type: html\n" }).replace("name: briefs", "name: memos"),
+    })
+    assert.equal(compiledFields(root, "memos").sheet.maxLength, 204800)
+    const r = dt(root, "check")
+    assert.equal(r.status, 0, out(r).slice(-400))
+    assert.deepEqual(warningLines(r), [])
   })
 })
 
@@ -317,7 +331,7 @@ describe("the check contribution", () => {
           ".dreamteamer/collections/notes.collection.yaml",
           "notes",
           "sheet",
-          "sheet: field declares no maxLength: only the app's own ceiling holds (collection notes)",
+          "sheet: field declares no maxLength: only the app's own ceiling holds; type: html would hold it to 204,800 (collection notes)",
         ],
         ["data/notes/a.note.md", "notes/a", "sheet", "sheet: form element does nothing (<form>)"],
         ["data/notes/a.note.md", "notes/a", "leaf", "leaf: iframe element will not load (<iframe>)"],

@@ -6,8 +6,18 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import yaml from "js-yaml"
-import { cleanup, pkgOf, MODULES, installPacked, virginWorkspace } from "../../../tests/helpers/workspace.ts"
 import {
+  cleanup,
+  pkgOf,
+  MODULES,
+  installPacked,
+  virginWorkspace,
+  run,
+  ENGINE as SUITE_ENGINE,
+  ENGINE_VERSION,
+} from "../../../tests/helpers/workspace.ts"
+import {
+  ENGINE,
   LIMIT,
   BIG_ARGUMENT,
   briefsYaml,
@@ -31,12 +41,13 @@ describe("the mixin html-page", () => {
     root = workspace()
   })
 
-  test("a collection that lists it compiles and has the field: a string, 204,800 characters at most, drawn and edited as html", () => {
+  test("a collection that lists it compiles and has the field: of type html, 204,800 characters at most, with no display keys", () => {
     const page = compiledFields(root, "briefs").page
-    assert.equal(page.type, "string")
+    assert.equal(page.type, "html")
     assert.equal(page.title, "Page")
     assert.equal(page.maxLength, LIMIT)
-    assert.deepEqual(page.display, { viewer: "html", editor: "html" })
+    // the app draws and edits the html type as a page by its type; nothing in the field has to say so
+    assert.equal(page.display, undefined)
     assert.match(page.description, /static HTML/i)
     assert.ok(isHtmlField(page))
     assert.deepEqual(htmlFieldsOf(compiledFields(root, "briefs")), ["page"])
@@ -52,11 +63,10 @@ describe("the mixin html-page", () => {
     assert.deepEqual(
       { ...mixin.fields.page, description: undefined },
       {
-        type: "string",
+        type: "html",
         title: "Page",
         maxLength: LIMIT,
         description: undefined,
-        display: { viewer: "html", editor: "html" },
       }
     )
   })
@@ -220,7 +230,7 @@ describe("the package", () => {
     assert.equal(pkg.dreamteamer.dependencies, undefined)
   })
   test("beside a NotebookLM module older than that release dt compile refuses, naming both; beside 0.4.0 it compiles", () => {
-    const root = virginWorkspace()
+    const root = virginWorkspace(ENGINE)
     installPacked(root, ["ui-html", "notebooklm"])
     const nlm = path.join(root, "node_modules", "@dreamteamer", "notebooklm", "package.json")
     const setVersion = (version: string) => {
@@ -241,6 +251,25 @@ describe("the package", () => {
     ok(dt(root, "compile"))
     assert.ok(fs.existsSync(path.join(root, ".dreamteamer", "mixins", "html-page.mixin.yaml")))
   })
+  test("needs the engine that has the html type: 0.54.0, and an older engine refuses to compile it, naming the floor", () => {
+    assert.equal(pkg.dreamteamer.engine, ">=0.54.0")
+    const [major, minor] = JSON.parse(fs.readFileSync(path.join(ENGINE, "package.json"), "utf8"))
+      .version.split(".")
+      .map(Number)
+    assert.ok(major > 0 || minor >= 54, "this module's tests run on an engine with the html type")
+  })
+  test(
+    "on the suite's older engine none of the module is compiled, and compile says why, naming the floor",
+    { skip: SUITE_ENGINE === ENGINE && `the suite's engine ${ENGINE_VERSION} already has the html type` },
+    () => {
+      const root = virginWorkspace(SUITE_ENGINE)
+      installPacked(root, ["ui-html"])
+      const r = run(root, ["compile"], {}, SUITE_ENGINE)
+      assert.match(out(r), /module @dreamteamer\/ui-html needs engine ">=0\.54\.0"/)
+      assert.match(out(r), /none of its content is compiled/)
+      assert.ok(!fs.existsSync(path.join(root, ".dreamteamer", "mixins", "html-page.mixin.yaml")))
+    }
+  )
   test("exports htmlToText from its build", async () => {
     const entry = pkg.exports["./htmlToText"]
     const file = path.join(MODULES, "ui-html", entry.import ?? entry.default ?? entry)

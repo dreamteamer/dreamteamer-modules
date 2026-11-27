@@ -1,11 +1,15 @@
 // A scratch workspace with this module installed from its packed tarball, the way npm delivers it, and one
-// collection of the workspace's own module that holds a page. The engine is the suite's (tests/helpers).
+// collection of the workspace's own module that holds a page. The engine is this module's floor, 0.54.0, the first
+// with the html field type (tests/helpers releaseEngineFor), or the suite's own when that is newer.
 import fs from "node:fs"
 import path from "node:path"
 import assert from "node:assert/strict"
 import yaml from "js-yaml"
 import { pathToFileURL } from "node:url"
-import { ENGINE, engineEntry, installPacked, run, virginWorkspace } from "../../../tests/helpers/workspace.ts"
+import { engineEntry, installPacked, releaseEngineFor, run, virginWorkspace } from "../../../tests/helpers/workspace.ts"
+
+/** The engine this module is tested on: the first with the html field type (its floor), or the suite's if newer. */
+export const ENGINE = releaseEngineFor("ui-html")
 
 /** The engine's public API: what `activate(dt)` is handed in a real workspace. */
 export const api = await import(pathToFileURL(engineEntry(ENGINE)).href)
@@ -36,7 +40,7 @@ export function briefsYaml({ mixin = true, fields = "" } = {}) {
 export const handWritten = (name: string, extra = "") =>
   `  ${name}:\n    type: string\n${extra}    display:\n      viewer: html\n      editor: html\n`
 
-export const dt = (root: string, ...args: string[]) => run(root, args)
+export const dt = (root: string, ...args: string[]) => run(root, args, {}, ENGINE)
 export const out = r => `${r.stdout}\n${r.stderr}`
 export const ok = r => {
   assert.equal(r.status, 0, `exit ${r.status}\n${out(r).slice(-2000)}`)
@@ -49,7 +53,7 @@ export function workspace(
   collections: Record<string, string> = { briefs: briefsYaml() },
   { compile = true, module = true } = {}
 ) {
-  const root = virginWorkspace()
+  const root = virginWorkspace(ENGINE)
   if (module) {
     installPacked(root, ["ui-html"])
     const manifest = path.join(root, "modules", "default", "package.json")
