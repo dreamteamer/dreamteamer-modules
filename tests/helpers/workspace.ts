@@ -54,14 +54,18 @@ export const SCOPE = "@dreamteamer"
 export const run = (cwd, args, env = {}, engine = ENGINE) =>
   engineRun({ root: cwd, engine } as Workspace, args, { env, timeoutMs: 60_000 })
 
-/** Work and Workspaces start at 0.53. Keep the rest of the baseline matrix and its older-engine refusal cases. */
+/** The engine a module whose floor is above the suite's engine is tested on: its own release, pinned here as an
+ *  alias. Work and Workspaces start at 0.53; ui-html at 0.54, the first engine with the html field type. Keep the
+ *  rest of the baseline matrix and its older-engine refusal cases. */
+const RELEASE_ENGINES: Record<string, string> = { work: "0.53.0", workspaces: "0.53.0", "ui-html": "0.54.0" }
 export function releaseEngineFor(module: string): string {
-  if (module !== "work" && module !== "workspaces") return ENGINE
+  const version = RELEASE_ENGINES[module]
+  if (!version) return ENGINE
   if (engineMeets(module)) return ENGINE
-  const engine = path.join(ROOT, "node_modules", "dreamteamer-0-53")
+  const engine = path.join(ROOT, "node_modules", `dreamteamer-${version.split(".").slice(0, 2).join("-")}`)
   const actual = JSON.parse(fs.readFileSync(path.join(engine, "package.json"), "utf8")).version
-  assert.equal(actual, "0.53.0")
-  assert.equal(pkgOf(module).dreamteamer.engine, ">=0.53.0", "review the release test engine for a changed floor")
+  assert.equal(actual, version)
+  assert.equal(pkgOf(module).dreamteamer.engine, `>=${version}`, "review the release test engine for a changed floor")
   return engine
 }
 

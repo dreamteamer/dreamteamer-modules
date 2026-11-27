@@ -22,6 +22,7 @@
 		"dreamteamer": "^0.50.0",
 		"dreamteamer-0-48": "npm:dreamteamer@0.48.1",
 		"dreamteamer-0-53": "npm:dreamteamer@0.53.0",
+		"dreamteamer-0-54": "npm:dreamteamer@0.54.0",
 		"js-yaml": "^4.1.0",
 		"prettier": "^3.10.1",
 		"typescript": "^5.9.3"
